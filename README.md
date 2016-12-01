@@ -12,10 +12,6 @@ Why not swarmkit or swarmmod?
 4. Most importent is, swarm is simple.
 5. We don't need more concept.
 
-## Feature of cattle
-* Compatible docker api. 
-* Simple.
-
 ## Container priority, min number
 
 ```
@@ -24,9 +20,36 @@ $ docker run -e PRIORITY=1 -e MIN_NUMBER=1 -l service=offline --name nginx httpd
 ```
 
 ## Scale up or down
-By docker cli.
+Cli
+
+Scale up: suggest use docker compose service as a scale unit.
+```
+$ cattle scale [[env|label] cotainer number]
 ```
 ```
+$ cattle scale service==online 5      # scale by label, which container has `-l service=online`
+$ cattle scale name==nginx 5          # scale by container name, which container has `--name nginx`
+$ cattle scale image==nginx:latest 5  # scale by image name
+```
+Scale down:
+```
+$ cattle scale service==online -5
+```
+
+~~~
+Mutilple scale:
+```
+$ cattle scale service==online 5 service==offline -5
+```
+~~~
+
+Filter: cattle scale complete compatible to swarm filter, just set ENV and labels to new container.
+
+If the scale number < 0, will scale down containers on the node witch has `storage=ssd` label.
+```
+$ cattle scale -e constraint:storage==ssd -l app=scale-up-nginx service==online 5 
+```
+
 Http api.
 ```
 ```
