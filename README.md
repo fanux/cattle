@@ -12,6 +12,11 @@ Why not swarmkit or swarmmod?
 4. Most importent is, swarm is simple.
 5. We don't need more concept.
 
+## Namespace, service, app 
+* Namespace is a collection of containers or nodes. `docker run -l namespace=swarm swarm:latet`
+* Service is a collection of different kinds of containers. For example, you can define `nginx,mysql,php` container as a same service :`docker run -l service=web-service ...`
+* App is a collection of same kind of containers. For example, you run 5 replication of nginx, all set the `app=nginx` lalel.
+
 ## Container priority, min number
 
 ```
@@ -24,31 +29,42 @@ Cli
 
 Scale up: suggest use docker compose service as a scale unit.
 ```
-$ cattle scale [[env|label] cotainer number]
+$ cattle scale [[env|label] filter number]
 ```
 ```
-$ cattle scale service==online 5      # scale by label, which container has `-l service=online`
-$ cattle scale name==nginx 5          # scale by container name, which container has `--name nginx`
-$ cattle scale image==nginx:latest 5  # scale by image name
+$ cattle scale -f service==online -n 5      # scale by label, which container has `-l service=online`
+$ cattle scale -f name==nginx -n 5          # scale by container name, which container has `--name nginx`
+~~$ cattle scale -f image==nginx:latest -n 5  # scale by image name~~
 ```
+The same app will not scale up again, judged by lable `-l app=xxx`:
+```
+  php:2 total                                            php:2+3=5 total                                    
+  redis:1 total                                          redis:1+3=4 total                                  
+  +-------------+                                        +-------------+ +-------------+ +-------------+    
+  | service=web |                                        | service=web | | service=web | | service=web |    
+  | app=php     |                                        | app=php     | | app=php     | | app=redis   |    
+  +-------------+                                        +-------------+ +-------------+ +-------------+    
+  +-------------+                                        +-------------+ +-------------+ +-------------+    
+  | service=web |  cattle scale -f service=web -n 3      | service=web | | service=web | | service=web |    
+  | app=php     |====================================>   | app=php     | | app=php     | | app=redis   |    
+  +-------------+                                        +-------------+ +-------------+ +-------------+    
+  +-------------+                                        +-------------+ +-------------+ +-------------+    
+  | service=web |                                        | service=web | | service=web | | service=web |    
+  | app=redis   |                                        | app=php     | | app=redis   | | app=redis   |    
+  +-------------+                                        +-------------+ +-------------+ +-------------+    
+```
+
 Scale down:
 ```
 $ cattle scale service==online -5
 ```
-
-~~~
-Mutilple scale:
-```
-$ cattle scale service==online 5 service==offline -5
-```
-~~~
-
 Filter: cattle scale complete compatible to swarm filter, just set ENV and labels to new container.
 
 If the scale number < 0, will scale down containers on the node witch has `storage=ssd` label.
 ```
-$ cattle scale -e constraint:storage==ssd -l app=scale-up-nginx service==online 5 
+$ cattle scale -e constraint:storage==ssd -l app=scale-up-nginx -f service==online -n 5 
 ```
+`--force` this flag will stop those containers witch priority is below then scale up service when resource is not enough.
 
 Http api.
 ```
