@@ -12,7 +12,7 @@ Why not swarmkit or swarmmod?
 4. Most importent is, swarm is simple.
 5. We don't need more concept.
 
-## Namespace, service, app 
+## Special labels: Namespace, service, app 
 * Namespace is a collection of containers or nodes. `docker run -l namespace=swarm swarm:latet`
 * Service is a collection of different kinds of containers. For example, you can define `nginx,mysql,php` container as a same service :`docker run -l service=web-service ...`
 * App is a collection of same kind of containers. For example, you run 5 replication of nginx, all set the `app=nginx` lalel.
@@ -32,9 +32,9 @@ Scale up: suggest use docker compose service as a scale unit.
 $ cattle scale [[env|label] filter number]
 ```
 ```
-$ cattle scale -f service==online -n 5      # scale by label, which container has `-l service=online`
+$ cattle scale -f service==online -n 5      # scale by service, which container has `-l service=online`
 $ cattle scale -f name==nginx -n 5          # scale by container name, which container has `--name nginx`
-~~$ cattle scale -f image==nginx:latest -n 5  # scale by image name~~
+$ cattle scale -f foo==bar -n 5             # scale by label, just select a container has `foo=bar` label, and scale it(not all the containers!).
 ```
 The same app will not scale up again, judged by lable `-l app=xxx`:
 ```
@@ -64,9 +64,29 @@ If the scale number < 0, will scale down containers on the node witch has `stora
 ```
 $ cattle scale -e constraint:storage==ssd -l app=scale-up-nginx -f service==online -n 5 
 ```
+
+If the container set the ENV MIN_NUMBER=x, cattle will guarantee has x containers left after scale down. 
+```
+php:5 total MIN_NUMBER=3                                                            php:3 left
+redis:4 total MIN_NUMBER=1                                                          redis:1 left
+ +-------------+ +-------------+ +-------------+                                     +-------------+ +-------------+
+ | service=web | | service=web | | service=web |                                     | service=web | | service=web |
+ | app=php     | | app=php     | | app=redis   |                                     | app=php     | | app=redis   |
+ +-------------+ +-------------+ +-------------+                                     +-------------+ +-------------+
+ +-------------+ +-------------+ +-------------+                                     +-------------+
+ | service=web | | service=web | | service=web | cattle scale -f service=web -n -3   | service=web |
+ | app=php     | | app=php     | | app=redis   | ==================================> | app=php     |
+ +-------------+ +-------------+ +-------------+ php: 5 - 3 < MIN_NUMBER=3           +-------------+
+ +-------------+ +-------------+ +-------------+ redis: 4 - 3 = MIN_NUMBER=1         +-------------+
+ | service=web | | service=web | | service=web |                                     | service=web |
+ | app=php     | | app=redis   | | app=redis   |                                     | app=php     |
+ +-------------+ +-------------+ +-------------+                                     +-------------+
+```
+
+## Resource Seize
 `--force` this flag will stop those containers witch priority is below then scale up service when resource is not enough.
 
-Http api.
-```
-```
+## Resource Return Back
 
+## App information
+Before stop a container, must inform it to do some clean work.
