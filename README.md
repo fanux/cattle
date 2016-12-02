@@ -46,7 +46,7 @@ The same app will not scale up again, judged by label `-l app=xxx`:
 
 Scale down:
 ```
-$ cattle scale service==online -5
+$ cattle scale -f service==online -n -5
 ```
 Filter: cattle scale complete compatible to swarm filter, just set ENV and labels to new container.
 
