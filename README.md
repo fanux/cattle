@@ -38,7 +38,7 @@ The same app will not scale up again, judged by lable `-l app=xxx`:
   | app=php     |                                        | app=php     | | app=php     | | app=redis   |    
   +-------------+                                        +-------------+ +-------------+ +-------------+    
   +-------------+                                        +-------------+ +-------------+ +-------------+    
-  | service=web |  cattle scale -f service=web -n 3      | service=web | | service=web | | service=web |    
+  | service=web |  cattle scale -f service==web -n 3      | service=web | | service=web | | service=web |    
   | app=php     |====================================>   | app=php     | | app=php     | | app=redis   |    
   +-------------+                                        +-------------+ +-------------+ +-------------+    
   +-------------+                                        +-------------+ +-------------+ +-------------+    
