@@ -1,16 +1,9 @@
 ## Why cattle
-1. Swarm not support scale command or API.
+1. Swarm not support scale command or API. Cattle support scale service with filters.
 2. Scale up is easy, but when some high priority service want to seize low priority resources, how to decide witch  service to scale down?
+3. Stop container after inform app.
 
 Cattle sovle those problems.
-
-Why not swarmkit or swarmmod? 
-
-1. Not support `--net=host` (maybe support later)
-2. Current not support some filter (later will support)
-3. Swarmkit or swarmmod add more api to docker engine, witch I don't want to use.
-4. Most importent is, swarm is simple.
-5. We don't need more concept.
 
 ## Special labels: Namespace, service, app 
 * Namespace is a collection of containers or nodes. `docker run -l namespace=swarm swarm:latet`
