@@ -1,14 +1,13 @@
 ## Why cattle
-1. Swarm not support scale command or API. Cattle support scale service with filters.
-2. Scale up is easy, but when some high priority service want to seize low priority resources, how to decide witch  service to scale down?
+1. Swarm does not support scale command or API. Cattle support scale service with filters.
+2. Scale up is easy, but when some high priority service want to seize low priority resources, how to decide which service to scale down?
 3. Stop container after inform app.
+Cattle solve those problems.
 
-Cattle sovle those problems.
-
-## Special labels: Namespace, service, app 
-* Namespace is a collection of containers or nodes. `docker run -l namespace=swarm swarm:latet`
-* Service is a collection of different kinds of containers. For example, you can define `nginx,mysql,php` container as a same service :`docker run -l service=web-service ...`
-* App is a collection of same kind of containers. For example, you run 5 replication of nginx, all set the `app=nginx` lalel.
+## Special labels: Namespace, service, app
+* Namespace is a collection of containers or nodes. `docker run -l namespace=swarm swarm:latest`
+* Service is a collection of different kinds of containers. For example, you can define `nginx,mysql,php` container as the same service :`docker run -l service=web-service ...`
+* App is a collection of the same kind of containers. For example, you run 5 replication of nginx, all set the `app=nginx` label.
 
 ## Container priority, min number
 
@@ -18,8 +17,6 @@ $ docker run -e PRIORITY=1 -e MIN_NUMBER=1 -l service=offline --name nginx httpd
 ```
 
 ## Scale up or down
-Cli
-
 Scale up: suggest use docker compose service as a scale unit.
 ```
 $ cattle scale [[env|label] filter number]
@@ -27,9 +24,9 @@ $ cattle scale [[env|label] filter number]
 ```
 $ cattle scale -f service==online -n 5      # scale by service, which container has `-l service=online`
 $ cattle scale -f name==nginx -n 5          # scale by container name, which container has `--name nginx`
-$ cattle scale -f foo==bar -n 5             # scale by label, just select a container has `foo=bar` label, and scale it(not all the containers!).
+$ cattle scale -f foo==bar -n 5             # scale by the label, just select a container has `foo=bar` label, and scale it(not all the containers!).
 ```
-The same app will not scale up again, judged by lable `-l app=xxx`:
+The same app will not scale up again, judged by label `-l app=xxx`:
 ```
   php:2 total                                            php:2+3=5 total                                    
   redis:1 total                                          redis:1+3=4 total                                  
