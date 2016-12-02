@@ -64,7 +64,7 @@ If the container set the ENV MIN_NUMBER=x, cattle will guarantee has x container
  | app=php     | | app=php     | | app=redis   |                                     | app=php     | | app=redis   |
  +-------------+ +-------------+ +-------------+                                     +-------------+ +-------------+
  +-------------+ +-------------+ +-------------+                                     +-------------+
- | service=web | | service=web | | service=web | cattle scale -f service=web -n -3   | service=web |
+ | service=web | | service=web | | service=web | cattle scale -f service==web -n -3  | service=web |
  | app=php     | | app=php     | | app=redis   | ==================================> | app=php     |
  +-------------+ +-------------+ +-------------+ php: 5 - 3 < MIN_NUMBER=3           +-------------+
  +-------------+ +-------------+ +-------------+ redis: 4 - 3 = MIN_NUMBER=1         +-------------+
