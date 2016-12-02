@@ -67,8 +67,8 @@ $ cattle scale -e constraint:storage==ssd -l app=scale-up-nginx -f service==onli
 
 If the container set the ENV MIN_NUMBER=x, cattle will guarantee has x containers left after scale down. 
 ```
-php:5 total MIN_NUMBER=3                                                            php:3 left
-redis:4 total MIN_NUMBER=1                                                          redis:1 left
+ php:5 total MIN_NUMBER=3                                                            php:3 left
+ redis:4 total MIN_NUMBER=1                                                          redis:1 left
  +-------------+ +-------------+ +-------------+                                     +-------------+ +-------------+
  | service=web | | service=web | | service=web |                                     | service=web | | service=web |
  | app=php     | | app=php     | | app=redis   |                                     | app=php     | | app=redis   |
@@ -84,9 +84,79 @@ redis:4 total MIN_NUMBER=1                                                      
 ```
 
 ## Resource Seize
-`--force` this flag will stop those containers witch priority is below then scale up service when resource is not enough.
+User `affinity:xxx!=xxx` will stop those containers witch priority is below then scale up service.
 
-## Resource Return Back
+Suggest there are four nodes with `GPU=true` label in our cluster. There are 2 services: online and offline. The MIN_NUMBER of offline is 1, onlie has higher priority 1 and offline has lower priority 9.
+```
+ node: GPU=true            node: GPU=true            node: GPU=true            node: GPU=true
+ +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+
+ | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |
+ | | service=online |    | | | service=offline|    | | | service=offline|    | | | service=offline|    |
+ | | priority=1     |    | | | priority=9     |    | | | priority=9     |    | | | priority=9     |    |
+ | |                |    | | | MIN_NUMBER=1   |    | | | MIN_NUMBER=1   |    | | | MIN_NUMBER=1   |    |
+ | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |
+ +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+
+                                                    | cattle scale -e constraint:GPU==true       \     # I need GPU nodes
+                                                    |              -e affinity:service!=offline  \     # I seize the offline resource
+                                                    |              -f service==online  -n 3            # Scale up 3 online service instances
+                                                    V
+ node: GPU=true            node: GPU=true            node: GPU=true            node: GPU=true
+ +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+   Want scale up 3 online service instances, but only 2 successed, because must
+ | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |   ensure the MIN_NUMBER of offline service left.
+ | | service=online |    | | | service=online |    | | | service=online |    | | | service=offline|    |
+ | | priority=1     |    | | | priority=1     |    | | | priority=1     |    | | | priority=9     |    |
+ | |                |    | | |                |    | | |                |    | | | MIN_NUMBER=1   |    |
+ | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |
+ +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+
+                                                    | cattle scale -e constraint:GPU==true \           # Want scale up offline service
+                                                    |              -e affinity:service!=online \
+                                                    |              -f service==offline -n 2
+                                                    V
+ node: GPU=true            node: GPU=true            node: GPU=true            node: GPU=true
+ +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+ Seize resource failed. Because the offline
+ | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    | priority is lower. Offline service must wait
+ | | service=online |    | | | service=online |    | | | service=online |    | | | service=offline|    | online service initiative release its resource.
+ | | priority=1     |    | | | priority=1     |    | | | priority=1     |    | | | priority=9     |    |
+ | |                |    | | |                |    | | |                |    | | | MIN_NUMBER=1   |    |
+ | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |
+ +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+
+                                                    | cattle scale -f service==online -n -2
+                                                    V
+ node: GPU=true            node: GPU=true            node: GPU=true            node: GPU=true
+ +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+ Online service initiative release its resource.
+ | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |
+ | | service=online |    | | |                |    | | |                |    | | | service=offline|    |
+ | | priority=1     |    | | |                |    | | |                |    | | | priority=9     |    |
+ | |                |    | | |                |    | | |                |    | | | MIN_NUMBER=1   |    |
+ | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |
+ +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+
+                                                    | cattle scale -f service==offline -n 2
+                                                    V
+ node: GPU=true            node: GPU=true            node: GPU=true            node: GPU=true
+ +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+
+ | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |
+ | | service=online |    | | | service=offline|    | | | service=offline|    | | | service=offline|    |
+ | | priority=1     |    | | | priority=9     |    | | | priority=9     |    | | | priority=9     |    |
+ | |                |    | | | MIN_NUMBER=1   |    | | | MIN_NUMBER=1   |    | | | MIN_NUMBER=1   |    |
+ | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |
+ +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+
+```
 
-## App information
+## Inform App Hook 
 Before stop a container, must inform it to do some clean work.
+```
+-e STOP_HOOK="www.iflytek.com/stop" \
+-e WAIT_TIME=60s
+```
+
+```
+     www.iflytek.com/stop           cattle
+             |        PRE_STOP        |
+             |<-----------------------|
+             |     container info     | sleep 60s
+             |                        |
+             |       POST_STOP        | stop the container
+             |<-----------------------|
+             |    container info      |
+             V                        V
+```
