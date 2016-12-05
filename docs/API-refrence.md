@@ -1,34 +1,26 @@
 ## API Refrence
 
 ### Scale
-URL: /scale
-METHOD: POST
-BODY:
+* URL: /scale
+* METHOD: POST
+* BODY:
 ```
 {
-  Items: [
+  "Items": [
       {
-         Filters: [service==online],
-         Number: 3,
-         ENVs: [constraint:storage==ssd, affinity:app!=offline],
-         Labels: {
-            app:scale-up-nginx,
+         "Filters": ["service==online"],
+         "Number": 3,
+         "ENVs": ["constraint:storage==ssd", "affinity:app!=offline"],
+         "Labels": {
+            "app":"scale-up-nginx",
          }
       },
       {
-         Filters: [service==online],
-         Number: 3,
-         ENVs: [constraint:storage==ssd, affinity:app!=offline],
-         Labels: {
-            app:scale-up-nginx,
-         }
-      },
-      {
-         Filters: [service==offline],
-         Number: -3,
-         ENVs: [constraint:storage==ssd, STOP_HOOK="www.iflytek.com/stop"],
-         Labels: {
-            app:scale-down-nginx,
+         "Filters": ["service==offline"],
+         "Number": -3,
+         "ENVs": ["constraint:storage==ssd", "STOP_HOOK="www.iflytek.com/stop""],
+         "Labels": {
+            "app":"scale-down-nginx",
          }
       }
   ]
@@ -40,12 +32,12 @@ BODY:
 * Labels: set container label. If label already exist, overwrite it.
 
 ### Inform App Hook
-METHOD: POST
-BODY:
+* METHOD: POST
+* BODY:
 ```
 {
-   Action: PRE_STOP | POST_STOP
-   Containers: [
+   "Action": "PRE_STOP" | "POST_STOP"
+   "Containers": [
        {
              "Id": "8dfafdbc3a40",
              "Names":["/boring_feynman"],
