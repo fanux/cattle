@@ -1,8 +1,8 @@
 build:
    image: 192.168.86.106/devops/golang:1.7-godep
    commands:
-     - mkdir -p /go/src/github.com/docker/swarm/ && cp -r ./* /go/src/github.com/docker/swarm/
-     - cd /go/src/github.com/docker/swarm/ && godep go build -o cattle && cp cattle /drone/cattle/
+     - mkdir -p $GOPATH/src/github.com/docker/swarm/ && cp -r ./* $GOPATH/src/github.com/docker/swarm/
+     - cd $GOPATH/src/github.com/docker/swarm/ && godep go build -o cattle && cp cattle /drone/cattle/
 
 publish:
    docker:
