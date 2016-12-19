@@ -10,7 +10,6 @@ Cattle solve those problems.
 * App is a collection of the same kind of containers. For example, you run 5 replication of nginx, all set the `app=nginx` label.
 
 ## Container priority, min number
-
 ```
 $ docker run -e PRIORITY=10 -e MIN_NUMBER=3 -l service=online --name nginx nginx:latest
 $ docker run -e PRIORITY=1 -e MIN_NUMBER=1 -l service=offline --name nginx httpd:latest
