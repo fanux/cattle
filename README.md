@@ -54,6 +54,7 @@ If the scale number < 0, will scale down containers on the node witch has `stora
 $ cattle scale -e constraint:storage==ssd -l app=scale-up-nginx -f service==online -n 5 
 ```
 
+
 If the container set the ENV MIN_NUMBER=x, cattle will guarantee has x containers left after scale down. 
 ```
  php:5 total MIN_NUMBER=3                                                            php:3 left
