@@ -1,7 +1,7 @@
 build:
    image: 192.168.86.106/devops/golang:1.7-godep
    commands:
-     - cp -rf ./* /go/src/github.com/docker/swarm/
+     - mkdir -p /go/src/github.com/docker/swarm/ && cp -rf ./* /go/src/github.com/docker/swarm/
      - cd /go/src/github.com/docker/swarm/ && godep go build -o cattle
 
 publish:
