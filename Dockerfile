@@ -1,22 +1,7 @@
-FROM golang:1.5.4-alpine
+FROM 192.168.86.106/devops/alpine:3.4
 
-ARG GOOS
+COPY cattle /bin
 
-COPY . /go/src/github.com/docker/swarm
-WORKDIR /go/src/github.com/docker/swarm
+CMD cattle --help
 
-ENV GO15VENDOREXPERIMENT=1
 
-RUN set -ex \
-	&& apk add --no-cache --virtual .build-deps \
-	git \
-	&& GOOS=$GOOS CGO_ENABLED=0 go install -v -a -tags netgo -installsuffix netgo -ldflags "-w -X github.com/docker/swarm/version.GITCOMMIT `git rev-parse --short HEAD` -X github.com/docker/swarm/version.BUILDTIME \"`date -u`\""  \
-	&& apk del .build-deps
-
-ENV SWARM_HOST :2375
-EXPOSE 2375
-
-VOLUME $HOME/.swarm
-
-ENTRYPOINT ["swarm"]
-CMD ["--help"]

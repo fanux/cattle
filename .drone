@@ -1,0 +1,15 @@
+build:
+   image: 192.168.86.106/devops/golang:1.7-godep
+   commands:
+     - godep go build -o cattle
+
+publish:
+   docker:
+      username: admin
+      password: Harbor12345
+      registry: 192.168.86.106
+      email: fhtjob@hotmail.com
+      repo: devops/cattle
+      tag: alpha-v1.0
+      file: Dockerfile
+      insecure: true
