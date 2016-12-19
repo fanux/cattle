@@ -11,6 +11,6 @@ publish:
       registry: 192.168.86.106
       email: fhtjob@hotmail.com
       repo: devops/cattle
-      tag: alpha-v1.3
+      tag: alpha-v1.4
       file: Dockerfile
       insecure: true
