@@ -1,9 +1,16 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strings"
 
 	"github.com/codegangsta/cli"
+	"github.com/docker/swarm/common"
 )
 
 func showFlags(c *cli.Context) {
@@ -23,6 +30,55 @@ func showFlags(c *cli.Context) {
 	fmt.Println("numbers: ", c.Int("n"))
 }
 
+func buildRequestBody(c *cli.Context) (common.ScaleAPI, error) {
+	body := common.ScaleAPI{}
+	item := common.ScaleItem{}
+	item.Labels = make(map[string]string)
+
+	item.ENVs = c.StringSlice("e")
+	for _, v := range c.StringSlice("l") {
+		vSlice := strings.SplitN(v, "=", 2)
+		item.Labels[vSlice[0]] = vSlice[1]
+	}
+	item.Filters = c.StringSlice("f")
+	item.Number = c.Int("n")
+
+	body.Items = append(body.Items, item)
+
+	return body, nil
+}
+
+func sendRequest(body common.ScaleAPI, url string) error {
+	s, err := json.Marshal(body)
+	if err != nil {
+		log.Printf("encode json error: %s", err)
+		return err
+	}
+
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", url+"/scale", strings.NewReader(string(s)))
+	if err != nil {
+		log.Printf("new http request error: %s", err)
+		return err
+	}
+	req.Header.Set("Content-type", "application/json")
+
+	resp, err := client.Do(req)
+	defer resp.Body.Close()
+	if err != nil {
+		log.Printf("send scale request failed: %s", err)
+	} else {
+		io.Copy(os.Stdout, resp.Body)
+	}
+
+	return err
+}
+
 func scale(c *cli.Context) {
 	showFlags(c)
+	body, err := buildRequestBody(c)
+	if err != nil {
+		return
+	}
+	sendRequest(body, c.String("H"))
 }

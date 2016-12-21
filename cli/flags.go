@@ -153,8 +153,8 @@ var (
 	}
 	flScaleHost = cli.StringFlag{
 		Name:  "H",
-		Value: "tcp://127.0.0.1:2375",
-		Usage: "scale docker daemon host",
+		Value: "http://127.0.0.1:4000",
+		Usage: "cattle manager http server host and port",
 	}
 	flScaleENV = cli.StringSliceFlag{
 		Name:  "e",
