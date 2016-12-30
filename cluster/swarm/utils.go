@@ -1,6 +1,7 @@
 package swarm
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 
@@ -36,7 +37,7 @@ func convertMapToKVStrings(values map[string]string) []string {
 
 func hasPrifix(array []string, key string) bool {
 	flag := false
-	for a := range array {
+	for _, a := range array {
 		if strings.HasPrefix(a, key) {
 			flag = true
 			break
@@ -49,7 +50,7 @@ func hasPrifix(array []string, key string) bool {
 // parse env like key=value or key:value , support multiple values key=value1, key=value2, return []string{value1,value2}
 func getEnv(key string, envs []string) (values []string, ok bool) {
 	ok = false
-	for e := range envs {
+	for _, e := range envs {
 		if strings.HasPrefix(e, key) {
 			for i, c := range e {
 				if c == '=' || c == ':' {
@@ -59,10 +60,12 @@ func getEnv(key string, envs []string) (values []string, ok bool) {
 			}
 		}
 	}
+	return
 }
 
 func getMinNum(envs []string) int {
 	minNum := 1
+	var err error
 	minNums, ok := getEnv(common.EnvironmentMinNumber, envs)
 	if !ok {
 		log.Infof("not set min number, useing default min number : %d", minNum)
@@ -75,4 +78,33 @@ func getMinNum(envs []string) int {
 	}
 
 	return minNum
+}
+
+func parseFilterString(f []string) (filters []common.Filter, err error) {
+	//[key==value  key!=value]
+	var i int
+
+	filter := common.Filter{}
+
+	for _, s := range f {
+		for i = range s {
+			if s[i] == '=' && s[i-1] == '=' {
+				filter.Operater = "=="
+				break
+			}
+			if s[i] == '=' && s[i-1] == '!' {
+				filter.Operater = "!="
+				break
+			}
+		}
+		if i >= len(s)-1 {
+			return nil, errors.New("invalid filter")
+		}
+		filter.Key = s[:i-1]
+		filter.Pattern = s[i+1:]
+		filters = append(filters, filter)
+	}
+	log.Debugf("got filters: %s", filters)
+
+	return filters, err
 }

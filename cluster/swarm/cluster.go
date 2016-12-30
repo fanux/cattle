@@ -21,10 +21,10 @@ import (
 	networktypes "github.com/docker/engine-api/types/network"
 	"github.com/docker/go-units"
 	"github.com/docker/swarm/cluster"
-	"github.com/docker/swarm/cluster/mesos/task"
 	"github.com/docker/swarm/common"
 	"github.com/docker/swarm/scheduler"
 	"github.com/docker/swarm/scheduler/node"
+	"github.com/docker/swarm/task"
 	"github.com/samalba/dockerclient"
 )
 
@@ -996,63 +996,56 @@ func (c *Cluster) TagImage(IDOrName string, ref string, force bool) error {
 	return err
 }
 
-func parseFilterString(f []string) (filters []common.Filter, err error) {
-	//[key==value  key!=value]
-	var i int
-
-	filter := common.Filter{}
-
-	for _, s := range f {
-		for i = range s {
-			if s[i] == '=' && s[i-1] == '=' {
-				filter.Operater = "=="
+func filterContainer(filters []common.Filter, container *cluster.Container) bool {
+	match := true
+	for _, f := range filters {
+		label, ok := container.Labels[f.Key]
+		matched, err := regexp.MatchString(f.Pattern, label)
+		if err != nil {
+			log.Errorf("match label failed:%s", err)
+			return false
+		}
+		if f.Operater == "==" {
+			if !matched {
+				match = false
 				break
 			}
-			if s[i] == '=' && s[i-1] == '!' {
-				filter.Operater = "!="
+		} else if f.Operater == "!=" {
+			if matched {
+				match = false
 				break
 			}
 		}
-		if i >= len(s)-1 {
-			return nil, errors.New("invalid filter")
-		}
-		filter.Key = s[:i-1]
-		filter.Pattern = s[i+1:]
-		filters = append(filters, filter)
 	}
-	log.Debugf("got filters: %s", filters)
-
-	return filters, err
-}
-
-func filterContainer(filters []common.Filters, container cluster.Container) bool {
-	// TODO
-	return true
+	return match
 }
 
 // scale up or scale down may using different filter
-func (c *Cluster) filterContainer(f []string, n int) (containers []cluster.Container) {
+func (c *Cluster) filterContainer(f []string, n int) (containers cluster.Containers) {
 	/*
 	   case name==xxx filter container by container name
 	   case service==xxx  may return multiple containers
 	   other may filter container by container label
 	*/
-	filters, err := parseFilterString(f)
 	isScaleService := hasPrifix(f, common.LabelKeyService)
+	serviceApps := make(map[string]cluster.Containers)
+	serviceAppSet := make(map[string]*cluster.Container)
+	minNum := 1
+
+	filters, err := parseFilterString(f)
 	if err != nil {
 		return nil
 	}
 
 	if n > 0 {
 		// scale up container
-		serviceAppSet := make(map[string]cluster.Container)
 		for _, c := range c.Containers() {
 			if filterContainer(filters, c) {
 				if !isScaleService {
 					containers = append(containers, c)
 					break
 				} else {
-					app, ok := c.Labels[LabelKeyApp]
+					app, ok := c.Labels[common.LabelKeyApp]
 					if ok {
 						serviceAppSet[app] = c
 					} else {
@@ -1063,12 +1056,11 @@ func (c *Cluster) filterContainer(f []string, n int) (containers []cluster.Conta
 			}
 		}
 	} else if n < 0 {
+		n = -n
 		//default app min number
-		minNum := 1
 		var err error
 		//scale down container
 		if isScaleService {
-			serviceApps := make(map[string]cluster.Containers)
 			for _, c := range c.Containers() {
 				if filterContainer(filters, c) {
 					app, ok := c.Labels[common.LabelKeyApp]
@@ -1090,26 +1082,48 @@ func (c *Cluster) filterContainer(f []string, n int) (containers []cluster.Conta
 					containers = append(containers, c)
 					minNum = getMinNum(c.Config.Env)
 
-					if len(containers) > n+minNum {
+					if len(containers) >= n+minNum {
 						containers = containers[:n]
 						break
 					}
 				}
 			}
+			if len(containers) < n+minNum {
+				containers = containers[minNum:]
+			}
 		}
 	}
 
-	//scale multiple containers in a same serivce, same apps scale once
+	//scale multiple containers in a same serivce, same apps scale once, scale up containers
 	if len(serviceAppSet) != 0 {
 		for _, v := range serviceAppSet {
 			containers = append(containers, v)
 		}
 	}
+
+	//scale down containers with service label
+	if len(serviceApps) != 0 {
+		for _, v := range serviceApps {
+			minNum = getMinNum(v[0].Config.Env)
+			if len(v) >= n+minNum {
+				for _, vTemp := range v[:n] {
+					containers = append(containers, vTemp)
+				}
+			} else if len(v) < n+minNum {
+				for _, vTemp := range v[minNum:] {
+					containers = append(containers, vTemp)
+				}
+			}
+		}
+	}
+
+	log.Debugf("got scale containers:%v", containers)
+
 	return containers
 }
 
 // generate task by scale config
-func (c *Cluster) product(scaleConfig common.ScaleAPI) (*task.Tasks, error) {
+func (c *Cluster) product(scaleConfig common.ScaleAPI) (*scaleTask.Tasks, error) {
 	//TODO
 	for _, item := range scaleConfig.Items {
 		containers := c.filterContainer(item.Filters, item.Number)
