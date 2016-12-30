@@ -1,6 +1,11 @@
 package scaleTask
 
-import "docker/engine-api/types/container"
+import (
+	"errors"
+
+	"github.com/docker/engine-api/types/container"
+	"github.com/docker/swarm/common"
+)
 
 // LocalTasks is a synchronization task processor
 type LocalTasks struct {
@@ -11,19 +16,19 @@ type LocalTasks struct {
 func (t *LocalTasks) Do() (c []string, err error) {
 	//containers create remove start stop
 	//TODO if seize resource, needs stop container first, using multiple gorutine
-	for _, task := range t.Tasks {
+	for _, task := range t.Tasks.Tasks {
 		switch task.TaskType {
-		case TaskTypeCreateContainer:
+		case common.TaskTypeCreateContainer:
 			c, err = t.createContainer(task.containerConf)
-		case TaskTypeRemoveContainer:
+		case common.TaskTypeRemoveContainer:
 			c, err = t.removeContainer(task.containerConf)
-		case TaskTypeStartContainer:
+		case common.TaskTypeStartContainer:
 			c, err = t.startContainer(task.containerConf)
-		case TaskTypeStopContainer:
+		case common.TaskTypeStopContainer:
 			c, err = t.stopContainer(task.containerConf)
 		default:
 			c = nil
-			err = errors.new("unknow task type")
+			err = errors.New("unknow task type")
 		}
 	}
 	return c, err

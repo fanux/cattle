@@ -22,9 +22,9 @@ import (
 	"github.com/docker/go-units"
 	"github.com/docker/swarm/cluster"
 	"github.com/docker/swarm/common"
+	"github.com/docker/swarm/scaleTask"
 	"github.com/docker/swarm/scheduler"
 	"github.com/docker/swarm/scheduler/node"
-	"github.com/docker/swarm/task"
 	"github.com/samalba/dockerclient"
 )
 
@@ -1000,6 +1000,9 @@ func filterContainer(filters []common.Filter, container *cluster.Container) bool
 	match := true
 	for _, f := range filters {
 		label, ok := container.Labels[f.Key]
+		if !ok {
+			return false
+		}
 		matched, err := regexp.MatchString(f.Pattern, label)
 		if err != nil {
 			log.Errorf("match label failed:%s", err)
@@ -1058,7 +1061,6 @@ func (c *Cluster) filterContainer(f []string, n int) (containers cluster.Contain
 	} else if n < 0 {
 		n = -n
 		//default app min number
-		var err error
 		//scale down container
 		if isScaleService {
 			for _, c := range c.Containers() {
@@ -1135,13 +1137,13 @@ func (c *Cluster) product(scaleConfig common.ScaleAPI) (*scaleTask.Tasks, error)
 // Scale containers
 func (c *Cluster) Scale(scaleConfig common.ScaleAPI) []string {
 	tasks, err := c.product(scaleConfig)
-	_ = tasks
+	localTasks := scaleTask.LocalTasks{tasks}
 	// return container  ids
-	//containerIds, err := tasks.Do()
+	containerIds, err := localTasks.Do()
 	if err != nil {
 		log.Print("Do task failed: %s", err)
 		return nil
 	}
 	//return containerIds
-	return nil
+	return containerIds
 }

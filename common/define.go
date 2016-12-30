@@ -18,6 +18,17 @@ const (
 	EnvironmentMinNumber = "MIN_NUMBER"
 )
 
+const (
+	// TaskTypeCreateContainer is
+	TaskTypeCreateContainer = iota
+	// TaskTypeRemoveContainer is
+	TaskTypeRemoveContainer
+	// TaskTypeStartContainer is
+	TaskTypeStartContainer
+	// TaskTypeStopContainer is
+	TaskTypeStopContainer
+)
+
 //ScaleItem is
 type ScaleItem struct {
 	Filters []string
