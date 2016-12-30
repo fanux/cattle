@@ -268,3 +268,10 @@ func TestTagImage(t *testing.T) {
 	assert.Nil(t, c.TagImage("busybox", "test_busybox:latest", false))
 	assert.NotNil(t, c.TagImage("busybox_not_exists", "test_busybox:latest", false))
 }
+
+func TestParseFilterString(t *testing.T) {
+	s, _ := parseFilterString([]string{"key==value", "key!=value", "key3==value3"})
+	fmt.Println(s)
+	ss, _ := parseFilterString([]string{"keyvalue", "key=value", "key!value"})
+	fmt.Println(ss)
+}

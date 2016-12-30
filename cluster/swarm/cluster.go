@@ -21,6 +21,8 @@ import (
 	networktypes "github.com/docker/engine-api/types/network"
 	"github.com/docker/go-units"
 	"github.com/docker/swarm/cluster"
+	"github.com/docker/swarm/cluster/mesos/task"
+	"github.com/docker/swarm/common"
 	"github.com/docker/swarm/scheduler"
 	"github.com/docker/swarm/scheduler/node"
 	"github.com/samalba/dockerclient"
@@ -992,4 +994,140 @@ func (c *Cluster) TagImage(IDOrName string, ref string, force bool) error {
 	}
 
 	return err
+}
+
+func parseFilterString(f []string) (filters []common.Filter, err error) {
+	//[key==value  key!=value]
+	var i int
+
+	filter := common.Filter{}
+
+	for _, s := range f {
+		for i = range s {
+			if s[i] == '=' && s[i-1] == '=' {
+				filter.Operater = "=="
+				break
+			}
+			if s[i] == '=' && s[i-1] == '!' {
+				filter.Operater = "!="
+				break
+			}
+		}
+		if i >= len(s)-1 {
+			return nil, errors.New("invalid filter")
+		}
+		filter.Key = s[:i-1]
+		filter.Pattern = s[i+1:]
+		filters = append(filters, filter)
+	}
+	log.Debugf("got filters: %s", filters)
+
+	return filters, err
+}
+
+func filterContainer(filters []common.Filters, container cluster.Container) bool {
+	// TODO
+	return true
+}
+
+// scale up or scale down may using different filter
+func (c *Cluster) filterContainer(f []string, n int) (containers []cluster.Container) {
+	/*
+	   case name==xxx filter container by container name
+	   case service==xxx  may return multiple containers
+	   other may filter container by container label
+	*/
+	filters, err := parseFilterString(f)
+	isScaleService := hasPrifix(f, common.LabelKeyService)
+	if err != nil {
+		return nil
+	}
+
+	if n > 0 {
+		// scale up container
+		serviceAppSet := make(map[string]cluster.Container)
+		for _, c := range c.Containers() {
+			if filterContainer(filters, c) {
+				if !isScaleService {
+					containers = append(containers, c)
+					break
+				} else {
+					app, ok := c.Labels[LabelKeyApp]
+					if ok {
+						serviceAppSet[app] = c
+					} else {
+						log.Errorf("container has service label must has app label too!")
+						return nil
+					}
+				}
+			}
+		}
+	} else if n < 0 {
+		//default app min number
+		minNum := 1
+		var err error
+		//scale down container
+		if isScaleService {
+			serviceApps := make(map[string]cluster.Containers)
+			for _, c := range c.Containers() {
+				if filterContainer(filters, c) {
+					app, ok := c.Labels[common.LabelKeyApp]
+					if !ok {
+						log.Error("service must set app label")
+						return nil
+					}
+					cs, ok := serviceApps[app]
+					if !ok {
+						serviceApps[app] = append(serviceApps[app], c)
+					} else if len(cs) < n+getMinNum(cs[0].Config.Env) {
+						serviceApps[app] = append(serviceApps[app], c)
+					}
+				}
+			}
+		} else {
+			for _, c := range c.Containers() {
+				if filterContainer(filters, c) {
+					containers = append(containers, c)
+					minNum = getMinNum(c.Config.Env)
+
+					if len(containers) > n+minNum {
+						containers = containers[:n]
+						break
+					}
+				}
+			}
+		}
+	}
+
+	//scale multiple containers in a same serivce, same apps scale once
+	if len(serviceAppSet) != 0 {
+		for _, v := range serviceAppSet {
+			containers = append(containers, v)
+		}
+	}
+	return containers
+}
+
+// generate task by scale config
+func (c *Cluster) product(scaleConfig common.ScaleAPI) (*task.Tasks, error) {
+	//TODO
+	for _, item := range scaleConfig.Items {
+		containers := c.filterContainer(item.Filters, item.Number)
+		_ = containers
+	}
+	return nil, nil
+}
+
+// Scale containers
+func (c *Cluster) Scale(scaleConfig common.ScaleAPI) []string {
+	tasks, err := c.product(scaleConfig)
+	_ = tasks
+	// return container  ids
+	//containerIds, err := tasks.Do()
+	if err != nil {
+		log.Print("Do task failed: %s", err)
+		return nil
+	}
+	//return containerIds
+	return nil
 }

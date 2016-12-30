@@ -1,7 +1,11 @@
 package swarm
 
 import (
+	"strconv"
 	"strings"
+
+	"github.com/docker/swarm/common"
+	"github.com/prometheus/common/log"
 )
 
 // convertKVStringsToMap converts ["key=value"] to {"key":"value"}
@@ -28,4 +32,47 @@ func convertMapToKVStrings(values map[string]string) []string {
 		i++
 	}
 	return result
+}
+
+func hasPrifix(array []string, key string) bool {
+	flag := false
+	for a := range array {
+		if strings.HasPrefix(a, key) {
+			flag = true
+			break
+		}
+	}
+
+	return flag
+}
+
+// parse env like key=value or key:value , support multiple values key=value1, key=value2, return []string{value1,value2}
+func getEnv(key string, envs []string) (values []string, ok bool) {
+	ok = false
+	for e := range envs {
+		if strings.HasPrefix(e, key) {
+			for i, c := range e {
+				if c == '=' || c == ':' {
+					values = append(values, e[i+1:])
+					ok = true
+				}
+			}
+		}
+	}
+}
+
+func getMinNum(envs []string) int {
+	minNum := 1
+	minNums, ok := getEnv(common.EnvironmentMinNumber, envs)
+	if !ok {
+		log.Infof("not set min number, useing default min number : %d", minNum)
+	} else {
+		minNum, err = strconv.Atoi(minNums[0])
+		if err != nil {
+			minNum = 1
+			log.Warnf("get minNumber failed:%s", err)
+		}
+	}
+
+	return minNum
 }

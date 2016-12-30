@@ -1379,4 +1379,8 @@ func postScale(c *context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Println("got scale config: ", scaleConfig)
+
+	containers := c.cluster.Scale(scaleConfig)
+	// Response the scale containers id
+	json.NewEncoder(w).Encode(&containers)
 }

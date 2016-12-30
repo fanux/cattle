@@ -153,7 +153,7 @@ var (
 	}
 	flScaleHost = cli.StringFlag{
 		Name:  "H",
-		Value: "http://127.0.0.1:4000",
+		Value: "http://127.0.0.1:4001",
 		Usage: "cattle manager http server host and port",
 	}
 	flScaleENV = cli.StringSliceFlag{

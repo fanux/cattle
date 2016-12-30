@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -38,7 +39,12 @@ func buildRequestBody(c *cli.Context) (common.ScaleAPI, error) {
 	item.ENVs = c.StringSlice("e")
 	for _, v := range c.StringSlice("l") {
 		vSlice := strings.SplitN(v, "=", 2)
-		item.Labels[vSlice[0]] = vSlice[1]
+		if len(vSlice) == 2 {
+			item.Labels[vSlice[0]] = vSlice[1]
+		} else {
+			log.Printf("invalid label: %s", v)
+			return body, errors.New("invalid label")
+		}
 	}
 	item.Filters = c.StringSlice("f")
 	item.Number = c.Int("n")
@@ -64,6 +70,10 @@ func sendRequest(body common.ScaleAPI, url string) error {
 	req.Header.Set("Content-type", "application/json")
 
 	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("do http request failed: %s", err)
+		return err
+	}
 	defer resp.Body.Close()
 	if err != nil {
 		log.Printf("send scale request failed: %s", err)
