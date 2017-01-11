@@ -156,3 +156,9 @@ Before stop a container, must inform it to do some clean work.
 $ docker run -l app=foo -e "containerslots==2" foo:latest
 ```
 One host run less then 2 containers which has `app=foo` label. (`app` is a special label)
+
+### create containers with replication
+```
+$ docker run -e "replica==3" foo:latest
+```
+This command will create 3 containers using `foo:latest` image.

@@ -4,12 +4,17 @@ import (
 	"errors"
 
 	"github.com/docker/engine-api/types/container"
+	"github.com/docker/swarm/cluster"
 	"github.com/docker/swarm/common"
 )
 
 // LocalTasks is a synchronization task processor
 type LocalTasks struct {
 	*Tasks
+}
+
+//AddTasks is
+func (t *LocalTasks) AddTasks(c cluster.Containers, t int) {
 }
 
 // Do task

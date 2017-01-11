@@ -1157,16 +1157,11 @@ func (c *Cluster) Scale(scaleConfig common.ScaleAPI) []string {
 			return nil
 		}
 	*/
-	//return containerIds
 	log.Debugf("swarm cluster scale: %v", scaleConfig)
 
 	for _, item := range scaleConfig.Items {
 		log.Debugf("scale Item: %v", item)
 		containers := c.filterContainer(item.Filters, item.Number)
-		for _, c := range containers {
-			log.Debugf("=================filter containers==================")
-			log.Debugln(c.Container.Names, c.Container.Labels)
-		}
 	}
 
 	return nil
