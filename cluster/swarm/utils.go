@@ -83,6 +83,7 @@ func getMinNum(envs []string) int {
 func parseFilterString(f []string) (filters []common.Filter, err error) {
 	//[key==value  key!=value]
 	var i int
+	log.Debugf("parse filters: %v", filters)
 
 	filter := common.Filter{}
 

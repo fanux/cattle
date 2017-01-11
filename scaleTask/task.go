@@ -2,7 +2,6 @@ package scaleTask
 
 import (
 	"github.com/docker/engine-api/types/container"
-
 	"github.com/docker/swarm/cluster"
 )
 

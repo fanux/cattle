@@ -2,30 +2,23 @@ package common
 
 // special labels define
 const (
-	//LabelKeyNamespace is
 	LabelKeyNamespace = "namespace"
-	//LabelKeyService is
-	LabelKeyService = "service"
-	//LabelKeyApp is
-	LabelKeyApp = "app"
+	LabelKeyService   = "service"
+	LabelKeyApp       = "app"
+	LabelKeyName      = "name"
 )
 
 // special Environment define
 const (
-	//EnvironmentPriority is
-	EnvironmentPriority = "PRIORITY"
-	//EnvironmentMinNumber is
+	EnvironmentPriority  = "PRIORITY"
 	EnvironmentMinNumber = "MIN_NUMBER"
 )
 
+// tasks
 const (
-	// TaskTypeCreateContainer is
 	TaskTypeCreateContainer = iota
-	// TaskTypeRemoveContainer is
 	TaskTypeRemoveContainer
-	// TaskTypeStartContainer is
 	TaskTypeStartContainer
-	// TaskTypeStopContainer is
 	TaskTypeStopContainer
 )
 

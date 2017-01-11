@@ -150,3 +150,9 @@ Before stop a container, must inform it to do some clean work.
              |    container info      |
              V                        V
 ```
+
+### containerlots support
+```
+$ docker run -l app=foo -e "containerslots==2" foo:latest
+```
+One host run less then 2 containers which has `app=foo` label. (`app` is a special label)

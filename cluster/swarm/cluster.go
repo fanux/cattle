@@ -22,7 +22,6 @@ import (
 	"github.com/docker/go-units"
 	"github.com/docker/swarm/cluster"
 	"github.com/docker/swarm/common"
-	"github.com/docker/swarm/scaleTask"
 	"github.com/docker/swarm/scheduler"
 	"github.com/docker/swarm/scheduler/node"
 	"github.com/samalba/dockerclient"
@@ -1001,7 +1000,9 @@ func filterContainer(filters []common.Filter, container *cluster.Container) bool
 	for _, f := range filters {
 		label, ok := container.Labels[f.Key]
 		if !ok {
-			return false
+			if f.Operater == "==" {
+				return false
+			}
 		}
 		matched, err := regexp.MatchString(f.Pattern, label)
 		if err != nil {
@@ -1025,6 +1026,7 @@ func filterContainer(filters []common.Filter, container *cluster.Container) bool
 
 // scale up or scale down may using different filter
 func (c *Cluster) filterContainer(f []string, n int) (containers cluster.Containers) {
+	log.Debugf("filter container: %v  n:%d", f, n)
 	/*
 	   case name==xxx filter container by container name
 	   case service==xxx  may return multiple containers
@@ -1034,15 +1036,19 @@ func (c *Cluster) filterContainer(f []string, n int) (containers cluster.Contain
 	serviceApps := make(map[string]cluster.Containers)
 	serviceAppSet := make(map[string]*cluster.Container)
 	minNum := 1
+	isContainersLeftBigger := false
 
 	filters, err := parseFilterString(f)
 	if err != nil {
+		log.Errorf("parse Filter failed! %s", err)
 		return nil
 	}
+	log.Debugf("got filters: %v", filters)
 
 	if n > 0 {
 		// scale up container
 		for _, c := range c.Containers() {
+			log.Debugln("container info: ", c.Names, c.Info.Config.Labels)
 			if filterContainer(filters, c) {
 				if !isScaleService {
 					containers = append(containers, c)
@@ -1086,12 +1092,15 @@ func (c *Cluster) filterContainer(f []string, n int) (containers cluster.Contain
 
 					if len(containers) >= n+minNum {
 						containers = containers[:n]
+						log.Debugf("container num >= n + minNumber: %d", len(containers))
+						isContainersLeftBigger = true
 						break
 					}
 				}
 			}
-			if len(containers) < n+minNum {
+			if len(containers) < n+minNum && !isContainersLeftBigger {
 				containers = containers[minNum:]
+				log.Debugf("container num < n + minNumber: %d", len(containers))
 			}
 		}
 	}
@@ -1125,25 +1134,40 @@ func (c *Cluster) filterContainer(f []string, n int) (containers cluster.Contain
 }
 
 // generate task by scale config
+/*
 func (c *Cluster) product(scaleConfig common.ScaleAPI) (*scaleTask.Tasks, error) {
-	//TODO
+	tasks := &scaleTask.Tasks{*new([]scaleTask.Task), c}
+
 	for _, item := range scaleConfig.Items {
 		containers := c.filterContainer(item.Filters, item.Number)
-		_ = containers
 	}
 	return nil, nil
 }
+*/
 
 // Scale containers
 func (c *Cluster) Scale(scaleConfig common.ScaleAPI) []string {
-	tasks, err := c.product(scaleConfig)
-	localTasks := scaleTask.LocalTasks{tasks}
-	// return container  ids
-	containerIds, err := localTasks.Do()
-	if err != nil {
-		log.Print("Do task failed: %s", err)
-		return nil
-	}
+	/*
+		tasks, err := c.product(scaleConfig)
+		localTasks := scaleTask.LocalTasks{tasks}
+		// return container  ids
+		containerIds, err := localTasks.Do()
+		if err != nil {
+			log.Print("Do task failed: %s", err)
+			return nil
+		}
+	*/
 	//return containerIds
-	return containerIds
+	log.Debugf("swarm cluster scale: %v", scaleConfig)
+
+	for _, item := range scaleConfig.Items {
+		log.Debugf("scale Item: %v", item)
+		containers := c.filterContainer(item.Filters, item.Number)
+		for _, c := range containers {
+			log.Debugf("=================filter containers==================")
+			log.Debugln(c.Container.Names, c.Container.Labels)
+		}
+	}
+
+	return nil
 }
