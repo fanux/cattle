@@ -162,3 +162,19 @@ One host run less then 2 containers which has `app=foo` label. (`app` is a speci
 $ docker run -e "replica==3" foo:latest
 ```
 This command will create 3 containers using `foo:latest` image.
+
+### support task types
+Scale up container has two types task currently. Create container or start a stoped container.
+
+By default cattle create new container. If you don't want to create new containers, using -e TASK_TYPE=start
+
+```
+$ cattle scale -f key==value -e TASK_TYPE=start -n 5
+$ cattle scale -f key==value -e TASK_TYPE=create -n 5
+```
+
+Scale down has many task types as well, cattle destroy containers by default, if you want stop container:
+```
+$ cattle scale -f key==value -e TASK_TYPE=stop -n -5
+$ cattle scale -f key==value -e TASK_TYPE=destroy -n -5
+```

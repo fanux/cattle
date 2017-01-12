@@ -15,6 +15,7 @@ type LocalTasks struct {
 
 //AddTasks is
 func (t *LocalTasks) AddTasks(c cluster.Containers, t int) {
+	t.Tasks.AddTasks(c, t)
 }
 
 // Do task
