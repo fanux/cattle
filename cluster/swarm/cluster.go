@@ -1159,9 +1159,21 @@ func (c *Cluster) Scale(scaleConfig common.ScaleAPI) []string {
 	*/
 	log.Debugf("swarm cluster scale: %v", scaleConfig)
 
+	tasks := NewTasks(c, &LocalProcessor{})
+
 	for _, item := range scaleConfig.Items {
 		log.Debugf("scale Item: %v", item)
 		containers := c.filterContainer(item.Filters, item.Number)
+		if item.Number < 0 {
+			tasks.AddTasks(containers, common.TaskTypeRemoveContainer)
+		} else if item.Number > 0 {
+			tasks.AddTasks(containers, common.TaskTypeCreateContainer)
+		}
+	}
+
+	res, err := tasks.DoTasks()
+	if err != nil {
+		return res
 	}
 
 	return nil
