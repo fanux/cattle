@@ -1159,7 +1159,7 @@ func (c *Cluster) Scale(scaleConfig common.ScaleAPI) []string {
 	*/
 	log.Debugf("swarm cluster scale: %v", scaleConfig)
 
-	tasks := NewTasks(c, &LocalProcessor{})
+	tasks := NewTasks(&LocalProcessor{c})
 
 	for _, item := range scaleConfig.Items {
 		log.Debugf("scale Item: %v", item)
