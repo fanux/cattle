@@ -1167,7 +1167,9 @@ func (c *Cluster) Scale(scaleConfig common.ScaleAPI) []string {
 		if item.Number < 0 {
 			tasks.AddTasks(containers, common.TaskTypeRemoveContainer)
 		} else if item.Number > 0 {
-			tasks.AddTasks(containers, common.TaskTypeCreateContainer)
+			for i := 0; i < item.Number; i++ {
+				tasks.AddTasks(containers, common.TaskTypeCreateContainer)
+			}
 		}
 	}
 

@@ -1,3 +1,0 @@
-FROM centos:latest
-COPY swarm /
-CMD /swarm --help
