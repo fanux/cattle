@@ -26,6 +26,13 @@ type Tasks struct {
 	Processor TaskProssesor
 }
 
+// TaskProssesor is a scale task interface, local implement or distribute queue implement
+type TaskProssesor interface {
+	//Product(config common.ScaleConfig) error
+	//Consume() error
+	Do(*Task) (string, error)
+}
+
 //NewTasks is
 func NewTasks(p TaskProssesor) *Tasks {
 	return &Tasks{nil, nil, p}
@@ -92,11 +99,4 @@ func (t *Tasks) DoTasks() ([]string, error) {
 		names = append(names, name)
 	}
 	return names, nil
-}
-
-// TaskProssesor is a scale task interface, local implement or distribute queue implement
-type TaskProssesor interface {
-	//Product(config common.ScaleConfig) error
-	//Consume() error
-	Do(*Task) (string, error)
 }
