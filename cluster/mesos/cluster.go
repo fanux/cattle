@@ -19,6 +19,7 @@ import (
 	networktypes "github.com/docker/engine-api/types/network"
 	"github.com/docker/swarm/cluster"
 	"github.com/docker/swarm/cluster/mesos/task"
+	"github.com/docker/swarm/common"
 	"github.com/docker/swarm/scheduler"
 	"github.com/docker/swarm/scheduler/node"
 	"github.com/gogo/protobuf/proto"
@@ -716,4 +717,9 @@ func (c *Cluster) checkNameUniqueness(name string) bool {
 	}
 
 	return true
+}
+
+// Scale is scale
+func (c *Cluster) Scale(scaleConfig common.ScaleAPI) []string {
+	return nil
 }

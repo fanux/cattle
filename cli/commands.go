@@ -43,8 +43,8 @@ var (
 			Name:      "scale",
 			ShortName: "s",
 			Usage:     "Scale up or down containers",
-			Flags:     []cli.Flag{flJoinAdvertise, flHeartBeat, flTTL, flJoinRandomDelay, flDiscoveryOpt},
-			Action:    join,
+			Flags:     []cli.Flag{flScaleHost, flScaleENV, flScaleLabel, flScaleFilter, flScaleNumber},
+			Action:    scale,
 		},
 	}
 )

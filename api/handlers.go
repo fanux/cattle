@@ -21,6 +21,7 @@ import (
 	containertypes "github.com/docker/engine-api/types/container"
 	dockerfilters "github.com/docker/engine-api/types/filters"
 	"github.com/docker/swarm/cluster"
+	"github.com/docker/swarm/common"
 	"github.com/docker/swarm/experimental"
 	"github.com/docker/swarm/version"
 	"github.com/gorilla/mux"
@@ -1181,11 +1182,10 @@ func postTagImage(c *context, w http.ResponseWriter, r *http.Request) {
 	if err := c.cluster.TagImage(name, ref, force); err != nil {
 		if strings.HasPrefix(err.Error(), "No such image") {
 			httpError(w, err.Error(), http.StatusNotFound)
-			return
 		} else {
 			httpError(w, err.Error(), http.StatusInternalServerError)
-			return
 		}
+		return
 	}
 	w.WriteHeader(http.StatusCreated)
 }
@@ -1330,14 +1330,13 @@ func postRenameContainer(c *context, w http.ResponseWriter, r *http.Request) {
 	if err = c.cluster.RenameContainer(container, r.Form.Get("name")); err != nil {
 		if strings.HasPrefix(err.Error(), "Conflict") {
 			httpError(w, err.Error(), http.StatusConflict)
-			return
 		} else {
 			httpError(w, err.Error(), http.StatusInternalServerError)
-			return
 		}
+		return
 	}
 	w.WriteHeader(http.StatusNoContent)
-
+	return
 }
 
 // Proxy a hijack request to the right node
@@ -1370,4 +1369,18 @@ func notImplementedHandler(c *context, w http.ResponseWriter, r *http.Request) {
 
 func optionsHandler(c *context, w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
+}
+
+func postScale(c *context, w http.ResponseWriter, r *http.Request) {
+	scaleConfig := common.ScaleAPI{}
+
+	if err := json.NewDecoder(r.Body).Decode(&scaleConfig); err != nil {
+		httpError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	fmt.Println("got scale config: ", scaleConfig)
+
+	containers := c.cluster.Scale(scaleConfig)
+	// Response the scale containers id
+	json.NewEncoder(w).Encode(&containers)
 }
