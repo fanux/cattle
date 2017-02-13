@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/docker/swarm/common"
-	"github.com/prometheus/common/log"
 )
 
 // convertKVStringsToMap converts ["key=value"] to {"key":"value"}
