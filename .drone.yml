@@ -1,5 +1,5 @@
 build:
-   image: 10.1.86.50/devops/golang:1.7-godep
+   image: 10.1.86.51/devops/golang:1.7-godep
    commands:
      - echo "LABEL commit=$$COMMIT branch=$$BRANCH build_number=$$BUILD_NUMBER" >> Dockerfile
      - mkdir -p $GOPATH/src/github.com/docker/swarm/ && cp -r ./* $GOPATH/src/github.com/docker/swarm/ && pwd
@@ -9,7 +9,7 @@ publish:
    docker:
       username: admin
       password: Harbor12345
-      registry: 10.1.86.50
+      registry: 10.1.86.51
       email: fhtjob@hotmail.com
       repo: devops/cattle
       tag: alpha-v1.5
