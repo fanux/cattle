@@ -155,7 +155,7 @@ Before stop a container, must inform it to do some clean work.
 
 ### containerlots support
 ```
-$ docker run -l app=foo -e "containerslots==2" foo:latest
+$ docker run -l app=foo -e "containerslots=2" foo:latest
 ```
 One host run less then 2 containers which has `app=foo` label. (`app` is a special label)
 
@@ -180,3 +180,10 @@ Scale down has many task types as well, cattle destroy containers by default, if
 $ cattle scale -f key==value -e TASK_TYPE=stop -n -5
 $ cattle scale -f key==value -e TASK_TYPE=destroy -n -5
 ```
+
+### TimeSlice
+Container will stop or remove after TimeSlice.
+```
+$ cattle scale -f key==value -e TIMESLICE=2h -n 5 
+```
+This is usful for prevent high priority app don't release resource.
