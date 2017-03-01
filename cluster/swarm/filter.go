@@ -3,7 +3,7 @@ package swarm
 import (
 	"regexp"
 
-	"github.com/cloudflare/cfssl/log"
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm/cluster"
 	"github.com/docker/swarm/common"
 )
@@ -111,7 +111,7 @@ func filterContainer(filters []common.Filter, container *cluster.Container) bool
 		}
 		matched, err := regexp.MatchString(f.Pattern, label)
 		if err != nil {
-			log.Errorf("match label failed:%s", err)
+			logrus.Errorf("match label failed:%s", err)
 			return false
 		}
 		if f.Operater == "==" {
