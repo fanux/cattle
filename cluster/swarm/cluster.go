@@ -995,35 +995,6 @@ func (c *Cluster) TagImage(IDOrName string, ref string, force bool) error {
 	return err
 }
 
-func filterContainer(filters []common.Filter, container *cluster.Container) bool {
-	match := true
-	for _, f := range filters {
-		label, ok := container.Labels[f.Key]
-		if !ok {
-			if f.Operater == "==" {
-				return false
-			}
-		}
-		matched, err := regexp.MatchString(f.Pattern, label)
-		if err != nil {
-			log.Errorf("match label failed:%s", err)
-			return false
-		}
-		if f.Operater == "==" {
-			if !matched {
-				match = false
-				break
-			}
-		} else if f.Operater == "!=" {
-			if matched {
-				match = false
-				break
-			}
-		}
-	}
-	return match
-}
-
 // scale up or scale down may using different filter
 func (c *Cluster) filterContainer(f []string, n int) (containers cluster.Containers) {
 	log.Debugf("filter container: %v  n:%d", f, n)
@@ -1164,11 +1135,14 @@ func (c *Cluster) Scale(scaleConfig common.ScaleAPI) []string {
 	for _, item := range scaleConfig.Items {
 		log.Debugf("scale Item: %v", item)
 		containers := c.filterContainer(item.Filters, item.Number)
+		taskType := getTaskType(item.Number, item.ENVs)
+		log.Debugf("Task type is: %s", taskType)
+
 		if item.Number < 0 {
-			tasks.AddTasks(containers, common.TaskTypeRemoveContainer)
+			tasks.AddTasks(containers, taskType)
 		} else if item.Number > 0 {
 			for i := 0; i < item.Number; i++ {
-				tasks.AddTasks(containers, common.TaskTypeCreateContainer)
+				tasks.AddTasks(containers, taskType)
 			}
 		}
 	}

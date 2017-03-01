@@ -109,3 +109,28 @@ func parseFilterString(f []string) (filters []common.Filter, err error) {
 
 	return filters, err
 }
+
+func getTaskType(n int, envs []string) int {
+	value, ok := getEnv(common.EnvTaskTypeKey, envs)
+	flag := false
+
+	if !ok || len(value) != 1 {
+		flag = true
+		log.Infoln("Using default task type")
+	}
+
+	if n > 0 {
+		if flag == true || value[0] == common.EnvTaskCreate {
+			return common.TaskTypeCreateContainer
+		}
+		return common.TaskTypeStartContainer
+	} else if n < 0 {
+		if flag == true || value[0] == common.EnvTaskDestroy {
+			return common.TaskTypeDestroyContainer
+		}
+		return common.TaskTypeStopContainer
+	}
+
+	log.Errorf("Error scale num: %d", n)
+	return -1
+}

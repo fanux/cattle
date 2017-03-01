@@ -24,8 +24,8 @@ func (t *LocalProcessor) Do(task *Task) (c string, err error) {
 	switch task.TaskType {
 	case common.TaskTypeCreateContainer:
 		c, err = t.createContainer(task.Container)
-	case common.TaskTypeRemoveContainer:
-		c, err = t.removeContainer(task.Container)
+	case common.TaskTypeDestroyContainer:
+		c, err = t.destroyContainer(task.Container)
 	case common.TaskTypeStartContainer:
 		c, err = t.startContainer(task.Container)
 	case common.TaskTypeStopContainer:
@@ -45,31 +45,33 @@ func (t *LocalProcessor) createContainer(container *cluster.Container) (c string
 	var newContainer *cluster.Container
 	newContainer, err = t.Cluster.CreateContainer(container.Config, generateName(container.Names[0]), nil)
 	if err != nil {
-		logrus.Warnf("Scale up create container failed:%s", container.Names[0])
+		logrus.Warnf("Scale up create container failed: %s", container.Names[0])
 		return "", err
 	}
 
 	if err = t.Cluster.StartContainer(newContainer, nil); err != nil {
-		logrus.Warnf("Scale up start container failed:%s", container.Names[0])
+		logrus.Warnf("Scale up start container failed: %s", container.Names[0])
 		return "", err
 	}
 	return newContainer.Names[0], nil
 }
 
-func (t *LocalProcessor) removeContainer(container *cluster.Container) (c string, err error) {
+func (t *LocalProcessor) destroyContainer(container *cluster.Container) (c string, err error) {
 	//may be stop container first, this is force to remove container
 	//remove volume or not remove volue, this method not remove volume
 	if err = t.Cluster.RemoveContainer(container, true, false); err != nil {
-		logrus.Warnf("remove container failed:%s", container.Names)
+		logrus.Warnf("remove container failed: %s", container.Names)
 		return "", err
 	}
 	return container.Names[0], nil
 }
 
 func (t *LocalProcessor) startContainer(container *cluster.Container) (c string, err error) {
+	logrus.Debugf("start container: %s", container.Names)
 	return "", nil
 }
 
 func (t *LocalProcessor) stopContainer(container *cluster.Container) (c string, err error) {
+	logrus.Debugf("stop container: %s", container.Names)
 	return "", nil
 }

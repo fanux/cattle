@@ -17,9 +17,18 @@ const (
 // tasks
 const (
 	TaskTypeCreateContainer = iota
-	TaskTypeRemoveContainer
+	TaskTypeDestroyContainer
 	TaskTypeStartContainer
 	TaskTypeStopContainer
+)
+
+//TASK_TYPE
+const (
+	EnvTaskTypeKey = "TASK_TYPE"
+	EnvTaskStart   = "start"
+	EnvTaskStop    = "stop"
+	EnvTaskCreate  = "create"
+	EnvTaskDestroy = "destroy"
 )
 
 //ScaleItem is
