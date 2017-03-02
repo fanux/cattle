@@ -40,19 +40,19 @@ func NewFilter(c *Cluster, item *common.ScaleItem) (filter ContainerFilter) {
 	base.c = c
 	base.item = item
 	base.containers = c.Containers()
-	if hasPrifix(f, common.LabelKeyService) {
-		filterType = common.LabelKeyService
+	if hasPrifix(item.Filters, common.LabelKeyService) {
+		base.filterType = common.LabelKeyService
 	} else {
-		filterType = ""
+		base.filterType = ""
 	}
 
 	var err error
-	base.filters, err = parseFilterString(f)
+	base.filters, err = parseFilterString(item.Filters)
 	if err != nil {
 		logrus.Errorf("parse Filter failed! %s", err)
 		return nil
 	}
-	logrus.Debugf("got filters: %v", filters)
+	logrus.Debugf("got filters: %v", base.filters)
 
 	taskType := getTaskType(item.Number, item.ENVs)
 	base.taskType = taskType
@@ -77,13 +77,13 @@ type CreateContainerFilter struct {
 }
 
 func (f *CreateContainerFilter) filterService() cluster.Containers {
-	containers := make(map[string]cluster.Container)
-	for i, c := range f.containers {
+	containers := make(map[string]*cluster.Container)
+	for _, c := range f.containers {
 		logrus.Debugln("container info: ", c.Names, c.Info.Config.Labels)
 		if filterContainer(f.filters, c) {
 			app, ok := c.Labels[common.LabelKeyApp]
 			if ok {
-				serviceAppSet[app] = c
+				containers[app] = c
 			} else {
 				logrus.Errorf("container has service label must has app label too!")
 				return nil
@@ -91,9 +91,10 @@ func (f *CreateContainerFilter) filterService() cluster.Containers {
 		}
 	}
 
-	temp := make(cluster.Containers)
+	//temp := make(cluster.Containers, len(containers))
+	var temp cluster.Containers
 
-	for k, v := range containers {
+	for _, v := range containers {
 		temp = append(temp, v)
 	}
 	f.containers = temp
@@ -114,7 +115,7 @@ func (f *CreateContainerFilter) filterContainers() cluster.Containers {
 
 //Filter is
 func (f *CreateContainerFilter) Filter() cluster.Containers {
-	if filterType == common.LabelKeyService {
+	if f.filterType == common.LabelKeyService {
 		return f.filterService()
 	}
 	return f.filterContainers()
@@ -141,7 +142,7 @@ func (f *StartContainerFilter) filterContainers() cluster.Containers {
 
 //Filter is
 func (f *StartContainerFilter) Filter() cluster.Containers {
-	if filterType == common.LabelKeyService {
+	if f.filterType == common.LabelKeyService {
 		return f.filterService()
 	}
 	return f.filterContainers()
@@ -161,7 +162,7 @@ func (f *DestroyContainerFilter) filterContainers() cluster.Containers {
 
 //Filter is
 func (f *DestroyContainerFilter) Filter() cluster.Containers {
-	if filterType == common.LabelKeyService {
+	if f.filterType == common.LabelKeyService {
 		return f.filterService()
 	}
 	return f.filterContainers()
@@ -181,7 +182,7 @@ func (f *StopContainerFilter) filterContainers() cluster.Containers {
 
 //Filter is
 func (f *StopContainerFilter) Filter() cluster.Containers {
-	if filterType == common.LabelKeyService {
+	if f.filterType == common.LabelKeyService {
 		return f.filterService()
 	}
 	return f.filterContainers()
