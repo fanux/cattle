@@ -1116,6 +1116,14 @@ func (c *Cluster) product(scaleConfig common.ScaleAPI) (*scaleTask.Tasks, error)
 }
 */
 
+func showContainers(cs cluster.Containers) {
+	log.Debugln("\n\nFilter out containers:")
+	for _, c := range cs {
+		log.Debugf("container name: %s\n", c.Names)
+	}
+	log.Debugln("\n\n")
+}
+
 // Scale containers
 func (c *Cluster) Scale(scaleConfig common.ScaleAPI) []string {
 	/*
@@ -1149,7 +1157,8 @@ func (c *Cluster) Scale(scaleConfig common.ScaleAPI) []string {
 			}
 		*/
 		filter := NewFilter(c, &item)
-		filter.Filter()
+		containers := filter.Filter()
+		showContainers(containers)
 		filter.AddTasks(tasks)
 	}
 

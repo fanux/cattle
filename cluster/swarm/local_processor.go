@@ -68,7 +68,12 @@ func (t *LocalProcessor) destroyContainer(container *cluster.Container) (c strin
 
 func (t *LocalProcessor) startContainer(container *cluster.Container) (c string, err error) {
 	logrus.Debugf("start container: %s", container.Names)
-	return "", nil
+
+	if err = t.Cluster.StartContainer(container, nil); err != nil {
+		logrus.Warnf("Scale up start container failed: %s", container.Names[0])
+		return "", err
+	}
+	return container.Names[0], nil
 }
 
 func (t *LocalProcessor) stopContainer(container *cluster.Container) (c string, err error) {
