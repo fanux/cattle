@@ -12,16 +12,16 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/docker/docker/api/types"
+	containertypes "github.com/docker/docker/api/types/container"
+	networktypes "github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/volume"
+	"github.com/docker/docker/client"
+	engineapi "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/discovery"
 	"github.com/docker/docker/pkg/stringid"
-	"github.com/docker/engine-api/client"
-	engineapi "github.com/docker/engine-api/client"
-	"github.com/docker/engine-api/types"
-	containertypes "github.com/docker/engine-api/types/container"
-	networktypes "github.com/docker/engine-api/types/network"
 	"github.com/docker/go-units"
 	"github.com/docker/swarm/cluster"
-	"github.com/docker/swarm/common"
 	"github.com/docker/swarm/scheduler"
 	"github.com/docker/swarm/scheduler/node"
 	"github.com/samalba/dockerclient"
@@ -153,7 +153,10 @@ func (c *Cluster) CreateContainer(config *cluster.ContainerConfig, name string, 
 		//  fails with image not found, then try to reschedule with image affinity
 		// ENGINEAPIFIXME: The first error can be removed once dockerclient is removed
 		bImageNotFoundError, _ := regexp.MatchString(`image \S* not found`, err.Error())
-		if (bImageNotFoundError || client.IsErrImageNotFound(err)) && !config.HaveNodeConstraint() {
+
+		// Since docker engine 1.13 the error message has been changed. We have to check both for backwards compatibility.
+		bImageNotFoundError113, _ := regexp.MatchString(`repository \S* not found`, err.Error())
+		if (bImageNotFoundError || bImageNotFoundError113 || client.IsErrImageNotFound(err)) && !config.HaveNodeConstraint() {
 			// Check if the image exists in the cluster
 			// If exists, retry with an image affinity
 			if c.Image(config.Image) != nil {
@@ -255,7 +258,7 @@ func (c *Cluster) RemoveNetwork(network *cluster.Network) error {
 				engine.DeleteNetwork(network)
 			}
 		}
-	} else if engineapi.ErrConnectionFailed == err && network.Scope == "global" {
+	} else if engineapi.IsErrConnectionFailed(err) && network.Scope == "global" {
 		log.Debug("The original engine is unreachable - Attempting to remove global network from the reachable engines...")
 		for _, engine := range c.engines {
 			e1 := engine.RemoveNetwork(network)
@@ -522,7 +525,7 @@ func (c *Cluster) CreateNetwork(name string, request *types.NetworkCreate) (resp
 }
 
 // CreateVolume creates a volume in the cluster
-func (c *Cluster) CreateVolume(request *types.VolumeCreateRequest) (*types.Volume, error) {
+func (c *Cluster) CreateVolume(request *volume.VolumesCreateBody) (*types.Volume, error) {
 	var (
 		wg     sync.WaitGroup
 		volume *types.Volume
@@ -965,6 +968,31 @@ func (c *Cluster) BuildImage(buildContext io.Reader, buildImage *types.ImageBuil
 	return nil
 }
 
+// RefreshEngines refreshes all containers in the cluster
+func (c *Cluster) RefreshEngines() error {
+	for _, e := range c.engines {
+		err := e.RefreshContainers(true)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// RefreshEngine refreshes all containers in a specific engine
+func (c *Cluster) RefreshEngine(hostname string) error {
+	for _, e := range c.engines {
+		if e.Name == hostname {
+			err := e.RefreshContainers(true)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("no engine found with hostname %s", hostname)
+}
+
 // TagImage tags an image
 func (c *Cluster) TagImage(IDOrName string, ref string, force bool) error {
 	c.RLock()
@@ -993,179 +1021,4 @@ func (c *Cluster) TagImage(IDOrName string, ref string, force bool) error {
 	}
 
 	return err
-}
-
-// scale up or scale down may using different filter
-func (c *Cluster) filterContainer(f []string, n int) (containers cluster.Containers) {
-	log.Debugf("filter container: %v  n:%d", f, n)
-	/*
-	   case name==xxx filter container by container name
-	   case service==xxx  may return multiple containers
-	   other may filter container by container label
-	*/
-	isScaleService := hasPrifix(f, common.LabelKeyService)
-	serviceApps := make(map[string]cluster.Containers)
-	serviceAppSet := make(map[string]*cluster.Container)
-	minNum := 1
-	isContainersLeftBigger := false
-
-	filters, err := parseFilterString(f)
-	if err != nil {
-		log.Errorf("parse Filter failed! %s", err)
-		return nil
-	}
-	log.Debugf("got filters: %v", filters)
-
-	if n > 0 {
-		// scale up container
-		for _, c := range c.Containers() {
-			log.Debugln("container info: ", c.Names, c.Info.Config.Labels)
-			if filterContainer(filters, c) {
-				if !isScaleService {
-					containers = append(containers, c)
-					break
-				} else {
-					app, ok := c.Labels[common.LabelKeyApp]
-					if ok {
-						serviceAppSet[app] = c
-					} else {
-						log.Errorf("container has service label must has app label too!")
-						return nil
-					}
-				}
-			}
-		}
-	} else if n < 0 {
-		n = -n
-		//default app min number
-		//scale down container
-		if isScaleService {
-			for _, c := range c.Containers() {
-				if filterContainer(filters, c) {
-					app, ok := c.Labels[common.LabelKeyApp]
-					if !ok {
-						log.Error("service must set app label")
-						return nil
-					}
-					cs, ok := serviceApps[app]
-					if !ok {
-						serviceApps[app] = append(serviceApps[app], c)
-					} else if len(cs) < n+getMinNum(cs[0].Config.Env) {
-						serviceApps[app] = append(serviceApps[app], c)
-					}
-				}
-			}
-		} else {
-			for _, c := range c.Containers() {
-				if filterContainer(filters, c) {
-					containers = append(containers, c)
-					minNum = getMinNum(c.Config.Env)
-
-					if len(containers) >= n+minNum {
-						containers = containers[:n]
-						log.Debugf("container num >= n + minNumber: %d", len(containers))
-						isContainersLeftBigger = true
-						break
-					}
-				}
-			}
-			if len(containers) < n+minNum && !isContainersLeftBigger {
-				containers = containers[minNum:]
-				log.Debugf("container num < n + minNumber: %d", len(containers))
-			}
-		}
-	}
-
-	//scale multiple containers in a same serivce, same apps scale once, scale up containers
-	if len(serviceAppSet) != 0 {
-		for _, v := range serviceAppSet {
-			containers = append(containers, v)
-		}
-	}
-
-	//scale down containers with service label
-	if len(serviceApps) != 0 {
-		for _, v := range serviceApps {
-			minNum = getMinNum(v[0].Config.Env)
-			if len(v) >= n+minNum {
-				for _, vTemp := range v[:n] {
-					containers = append(containers, vTemp)
-				}
-			} else if len(v) < n+minNum {
-				for _, vTemp := range v[minNum:] {
-					containers = append(containers, vTemp)
-				}
-			}
-		}
-	}
-
-	log.Debugf("got scale containers:%v", containers)
-
-	return containers
-}
-
-// generate task by scale config
-/*
-func (c *Cluster) product(scaleConfig common.ScaleAPI) (*scaleTask.Tasks, error) {
-	tasks := &scaleTask.Tasks{*new([]scaleTask.Task), c}
-
-	for _, item := range scaleConfig.Items {
-		containers := c.filterContainer(item.Filters, item.Number)
-	}
-	return nil, nil
-}
-*/
-
-func showContainers(cs cluster.Containers) {
-	log.Debugln("\n\nFilter out containers:")
-	for _, c := range cs {
-		log.Debugf("container name: %s\n", c.Names)
-	}
-	log.Debugln("\n\n")
-}
-
-// Scale containers
-func (c *Cluster) Scale(scaleConfig common.ScaleAPI) []string {
-	/*
-		tasks, err := c.product(scaleConfig)
-		localTasks := scaleTask.LocalTasks{tasks}
-		// return container  ids
-		containerIds, err := localTasks.Do()
-		if err != nil {
-			log.Print("Do task failed: %s", err)
-			return nil
-		}
-	*/
-	log.Debugf("swarm cluster scale: %v", scaleConfig)
-
-	tasks := NewTasks(&LocalProcessor{c})
-
-	for _, item := range scaleConfig.Items {
-		log.Debugf("scale Item: %v", item)
-		/*
-			containers := c.filterContainer(item.Filters, item.Number)
-			taskType := getTaskType(item.Number, item.ENVs)
-			log.Debugf("Task type is: %s", taskType)
-
-			if item.Number < 0 {
-				tasks.AddTasks(containers, taskType)
-			} else if item.Number > 0 {
-				//TODO must consider the task type, create and start container is different
-				for i := 0; i < item.Number; i++ {
-					tasks.AddTasks(containers, taskType)
-				}
-			}
-		*/
-		filter := NewFilter(c, &item)
-		containers := filter.Filter()
-		showContainers(containers)
-		filter.AddTasks(tasks)
-	}
-
-	res, err := tasks.DoTasks()
-	if err != nil {
-		return res
-	}
-
-	return nil
 }
