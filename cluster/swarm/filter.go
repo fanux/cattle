@@ -4,6 +4,7 @@ import (
 	"regexp"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/cloudflare/cfssl/log"
 	"github.com/docker/swarm/cluster"
 	"github.com/docker/swarm/common"
 )
@@ -32,6 +33,82 @@ type ContainerFilterBase struct {
 func (f *ContainerFilterBase) AddTasks(tasks *Tasks) {
 	logrus.Infof("Using base add tasks, task type is: %d", f.taskType)
 	tasks.AddTasks(f.containers, f.taskType)
+}
+
+//Filter is
+func (f *ContainerFilterBase) Filter() cluster.Containers {
+	if f.filterType == common.LabelKeyService {
+		return f.filterService()
+	}
+	return f.filterContainers()
+}
+
+func (f *ContainerFilterBase) filterContainer(filters []common.Filter, container *cluster.Container) bool {
+	return filterContainer(filters, container)
+}
+
+func (f *ContainerFilterBase) filterService() cluster.Containers {
+	serviceApps := make(map[string]cluster.Containers)
+	var containers cluster.Containers
+	var n int
+	if f.item.Number < 0 {
+		n = -f.item.Number
+	} else {
+		n = f.item.Number
+	}
+	for _, c := range f.containers {
+		if f.filterContainer(f.filters, c) {
+			app, ok := c.Labels[common.LabelKeyApp]
+			if !ok {
+				logrus.Error("service must set app label")
+				return nil
+			}
+			cs, ok := serviceApps[app]
+			if !ok {
+				serviceApps[app] = append(serviceApps[app], c)
+			} else if len(cs) < n+getMinNum(cs[0].Config.Env) {
+				serviceApps[app] = append(serviceApps[app], c)
+			}
+		}
+	}
+	if len(serviceApps) != 0 {
+		for _, v := range serviceApps {
+			minNum = getMinNum(v[0].Config.Env)
+			if len(v) >= n+minNum {
+				containers = append(containers, v[:n]...)
+			} else if len(v) < n+minNum {
+				containers = append(containers, v[minNum:]...)
+			}
+		}
+	}
+	return containers
+}
+
+func (f *ContainerFilterBase) filterContainers() cluster.Containers {
+	var containers cluster.Containers
+	if f.item.Number < 0 {
+		n = -f.item.Number
+	} else {
+		n = f.item.Number
+	}
+	for _, c := range f.containers {
+		if f.filterContainer(f.filters, c) {
+			containers = append(containers, c)
+			minNum = getMinNum(c.Config.Env)
+
+			if len(containers) >= n+minNum {
+				containers = containers[:n]
+				logrus.Debugf("container num >= n + minNumber: %d", len(containers))
+				isContainersLeftBigger = true
+				break
+			}
+		}
+	}
+	if len(containers) < n+minNum && !isContainersLeftBigger {
+		containers = containers[minNum:]
+		log.Debugf("container num < n + minNumber: %d", len(containers))
+	}
+	return containers
 }
 
 //NewFilter is
@@ -85,7 +162,7 @@ func (f *CreateContainerFilter) filterService() cluster.Containers {
 			if ok {
 				containers[app] = c
 			} else {
-				logrus.Errorf("container has service label must has app label too!")
+				logrus.Errorf("container has service label must has app label too! name: %s", c.Names)
 				return nil
 			}
 		}
@@ -104,7 +181,7 @@ func (f *CreateContainerFilter) filterService() cluster.Containers {
 
 func (f *CreateContainerFilter) filterContainers() cluster.Containers {
 	for i, c := range f.containers {
-		if filterContainer(f.filters, c) {
+		if f.filterContainer(f.filters, c) {
 			f.containers = f.containers[i : i+1]
 			return f.containers
 		}
@@ -114,12 +191,14 @@ func (f *CreateContainerFilter) filterContainers() cluster.Containers {
 }
 
 //Filter is
+/*
 func (f *CreateContainerFilter) Filter() cluster.Containers {
 	if f.filterType == common.LabelKeyService {
 		return f.filterService()
 	}
 	return f.filterContainers()
 }
+*/
 
 //AddTasks is
 func (f *CreateContainerFilter) AddTasks(tasks *Tasks) {
@@ -141,32 +220,95 @@ func (f *StartContainerFilter) filterContainers() cluster.Containers {
 }
 
 //Filter is
+/*
 func (f *StartContainerFilter) Filter() cluster.Containers {
 	if f.filterType == common.LabelKeyService {
 		return f.filterService()
 	}
 	return f.filterContainers()
 }
+*/
 
 //DestroyContainerFilter is
 type DestroyContainerFilter struct {
 	*ContainerFilterBase
 }
 
+/*
 func (f *DestroyContainerFilter) filterService() cluster.Containers {
-	return nil
-}
-func (f *DestroyContainerFilter) filterContainers() cluster.Containers {
-	return nil
+	serviceApps := make(map[string]cluster.Containers)
+	var containers cluster.Containers
+	var n int
+	if f.item.Number < 0 {
+		n = -f.item.Number
+	} else {
+		n = f.item.Number
+	}
+	for _, c := range f.containers {
+		if filterContainer(f.filters, c) {
+			app, ok := c.Labels[common.LabelKeyApp]
+			if !ok {
+				logrus.Error("service must set app label")
+				return nil
+			}
+			cs, ok := serviceApps[app]
+			if !ok {
+				serviceApps[app] = append(serviceApps[app], c)
+			} else if len(cs) < n+getMinNum(cs[0].Config.Env) {
+				serviceApps[app] = append(serviceApps[app], c)
+			}
+		}
+	}
+	if len(serviceApps) != 0 {
+		for _, v := range serviceApps {
+			minNum = getMinNum(v[0].Config.Env)
+			if len(v) >= n+minNum {
+				containers = append(containers, v[:n]...)
+			} else if len(v) < n+minNum {
+				containers = append(containers, v[minNum:]...)
+			}
+		}
+	}
+	return containers
 }
 
+func (f *DestroyContainerFilter) filterContainers() cluster.Containers {
+	var containers cluster.Containers
+	if f.item.Number < 0 {
+		n = -f.item.Number
+	} else {
+		n = f.item.Number
+	}
+	for _, c := range f.containers {
+		if f.filterContainer(f.filters, c) {
+			containers = append(containers, c)
+			minNum = getMinNum(c.Config.Env)
+
+			if len(containers) >= n+minNum {
+				containers = containers[:n]
+				logrus.Debugf("container num >= n + minNumber: %d", len(containers))
+				isContainersLeftBigger = true
+				break
+			}
+		}
+	}
+	if len(containers) < n+minNum && !isContainersLeftBigger {
+		containers = containers[minNum:]
+		log.Debugf("container num < n + minNumber: %d", len(containers))
+	}
+	return containers
+}
+*/
+
 //Filter is
+/*
 func (f *DestroyContainerFilter) Filter() cluster.Containers {
 	if f.filterType == common.LabelKeyService {
 		return f.filterService()
 	}
 	return f.filterContainers()
 }
+*/
 
 //StopContainerFilter is
 type StopContainerFilter struct {
@@ -181,12 +323,14 @@ func (f *StopContainerFilter) filterContainers() cluster.Containers {
 }
 
 //Filter is
+/*
 func (f *StopContainerFilter) Filter() cluster.Containers {
 	if f.filterType == common.LabelKeyService {
 		return f.filterService()
 	}
 	return f.filterContainers()
 }
+*/
 
 func filterContainer(filters []common.Filter, container *cluster.Container) bool {
 	match := true
