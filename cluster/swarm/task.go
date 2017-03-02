@@ -45,6 +45,9 @@ func NewTasks(p TaskProssesor) *Tasks {
 	   |____________________________________|
 */
 func (t *Tasks) AddTasks(containers cluster.Containers, TaskType int) {
+	if containers == nil {
+		return
+	}
 	if t.Head == nil {
 		t.Head = ring.New(len(containers) + 1)
 		t.Head.Value = nil

@@ -11,13 +11,64 @@ import (
 //ContainerFilter is
 type ContainerFilter interface {
 	// now filter type has container filter and service filter
-	Filter(filterType string) cluster.Containers
+	Filter() cluster.Containers
+	AddTasks(*Tasks)
 }
 
 //ContainerFilterBase is
 type ContainerFilterBase struct {
-	Item       *common.ScaleItem
-	Containers cluster.Containers
+	c    *Cluster
+	item *common.ScaleItem
+	//Save filtered containers
+	containers cluster.Containers
+	// now filter type has container filter and service filter
+	filterType string
+	taskType   int
+
+	filters []common.Filter
+}
+
+//AddTasks is
+func (f *ContainerFilterBase) AddTasks(tasks *Tasks) {
+	logrus.Infof("Using base add tasks, task type is: %d", f.taskType)
+	tasks.AddTasks(f.containers, f.taskType)
+}
+
+//NewFilter is
+func NewFilter(c *Cluster, item *common.ScaleItem) (filter ContainerFilter) {
+	base := new(ContainerFilterBase)
+	base.c = c
+	base.item = item
+	base.containers = c.Containers()
+	if hasPrifix(f, common.LabelKeyService) {
+		filterType = common.LabelKeyService
+	} else {
+		filterType = ""
+	}
+
+	var err error
+	base.filters, err = parseFilterString(f)
+	if err != nil {
+		logrus.Errorf("parse Filter failed! %s", err)
+		return nil
+	}
+	logrus.Debugf("got filters: %v", filters)
+
+	taskType := getTaskType(item.Number, item.ENVs)
+	base.taskType = taskType
+	switch taskType {
+	case common.TaskTypeCreateContainer:
+		filter = &CreateContainerFilter{base}
+	case common.TaskTypeStartContainer:
+		filter = &StartContainerFilter{base}
+	case common.TaskTypeStopContainer:
+		filter = &StopContainerFilter{base}
+	case common.TaskTypeDestroyContainer:
+		filter = &DestroyContainerFilter{base}
+	default:
+		logrus.Errorf("Unknown task type:%d", taskType)
+	}
+	return filter
 }
 
 //CreateContainerFilter is
@@ -25,19 +76,55 @@ type CreateContainerFilter struct {
 	*ContainerFilterBase
 }
 
-func (f CreateContainerFilter) filterService() cluster.Containers {
-	return nil
+func (f *CreateContainerFilter) filterService() cluster.Containers {
+	containers := make(map[string]cluster.Container)
+	for i, c := range f.containers {
+		logrus.Debugln("container info: ", c.Names, c.Info.Config.Labels)
+		if filterContainer(f.filters, c) {
+			app, ok := c.Labels[common.LabelKeyApp]
+			if ok {
+				serviceAppSet[app] = c
+			} else {
+				logrus.Errorf("container has service label must has app label too!")
+				return nil
+			}
+		}
+	}
+
+	temp := make(cluster.Containers)
+
+	for k, v := range containers {
+		temp = append(temp, v)
+	}
+	f.containers = temp
+
+	return f.containers
 }
-func (f CreateContainerFilter) filterContainers() cluster.Containers {
+
+func (f *CreateContainerFilter) filterContainers() cluster.Containers {
+	for i, c := range f.containers {
+		if filterContainer(f.filters, c) {
+			f.containers = f.containers[i : i+1]
+			return f.containers
+		}
+	}
+	logrus.Infoln("No such container found!")
 	return nil
 }
 
 //Filter is
-func (f CreateContainerFilter) Filter(filterType string) cluster.Containers {
+func (f *CreateContainerFilter) Filter() cluster.Containers {
 	if filterType == common.LabelKeyService {
 		return f.filterService()
 	}
 	return f.filterContainers()
+}
+
+//AddTasks is
+func (f *CreateContainerFilter) AddTasks(tasks *Tasks) {
+	for i := 0; i < f.item.Number; i++ {
+		tasks.AddTasks(f.containers, common.TaskTypeCreateContainer)
+	}
 }
 
 //StartContainerFilter is
@@ -45,15 +132,15 @@ type StartContainerFilter struct {
 	*ContainerFilterBase
 }
 
-func (f StartContainerFilter) filterService() cluster.Containers {
+func (f *StartContainerFilter) filterService() cluster.Containers {
 	return nil
 }
-func (f StartContainerFilter) filterContainers() cluster.Containers {
+func (f *StartContainerFilter) filterContainers() cluster.Containers {
 	return nil
 }
 
 //Filter is
-func (f StartContainerFilter) Filter(filterType string) cluster.Containers {
+func (f *StartContainerFilter) Filter() cluster.Containers {
 	if filterType == common.LabelKeyService {
 		return f.filterService()
 	}
@@ -65,15 +152,15 @@ type DestroyContainerFilter struct {
 	*ContainerFilterBase
 }
 
-func (f DestroyContainerFilter) filterService() cluster.Containers {
+func (f *DestroyContainerFilter) filterService() cluster.Containers {
 	return nil
 }
-func (f DestroyContainerFilter) filterContainers() cluster.Containers {
+func (f *DestroyContainerFilter) filterContainers() cluster.Containers {
 	return nil
 }
 
 //Filter is
-func (f DestroyContainerFilter) Filter(filterType string) cluster.Containers {
+func (f *DestroyContainerFilter) Filter() cluster.Containers {
 	if filterType == common.LabelKeyService {
 		return f.filterService()
 	}
@@ -85,15 +172,15 @@ type StopContainerFilter struct {
 	*ContainerFilterBase
 }
 
-func (f StopContainerFilter) filterService() cluster.Containers {
+func (f *StopContainerFilter) filterService() cluster.Containers {
 	return nil
 }
-func (f StopContainerFilter) filterContainers() cluster.Containers {
+func (f *StopContainerFilter) filterContainers() cluster.Containers {
 	return nil
 }
 
 //Filter is
-func (f StopContainerFilter) Filter(filterType string) cluster.Containers {
+func (f *StopContainerFilter) Filter() cluster.Containers {
 	if filterType == common.LabelKeyService {
 		return f.filterService()
 	}

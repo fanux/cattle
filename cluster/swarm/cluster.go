@@ -1134,17 +1134,23 @@ func (c *Cluster) Scale(scaleConfig common.ScaleAPI) []string {
 
 	for _, item := range scaleConfig.Items {
 		log.Debugf("scale Item: %v", item)
-		containers := c.filterContainer(item.Filters, item.Number)
-		taskType := getTaskType(item.Number, item.ENVs)
-		log.Debugf("Task type is: %s", taskType)
+		/*
+			containers := c.filterContainer(item.Filters, item.Number)
+			taskType := getTaskType(item.Number, item.ENVs)
+			log.Debugf("Task type is: %s", taskType)
 
-		if item.Number < 0 {
-			tasks.AddTasks(containers, taskType)
-		} else if item.Number > 0 {
-			for i := 0; i < item.Number; i++ {
+			if item.Number < 0 {
 				tasks.AddTasks(containers, taskType)
+			} else if item.Number > 0 {
+				//TODO must consider the task type, create and start container is different
+				for i := 0; i < item.Number; i++ {
+					tasks.AddTasks(containers, taskType)
+				}
 			}
-		}
+		*/
+		filter := NewFilter(c, &item)
+		filter.Filter()
+		filter.AddTasks(tasks)
 	}
 
 	res, err := tasks.DoTasks()
