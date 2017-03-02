@@ -4,7 +4,6 @@ import (
 	"regexp"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/cloudflare/cfssl/log"
 	"github.com/docker/swarm/cluster"
 	"github.com/docker/swarm/common"
 )
@@ -110,7 +109,7 @@ func (f *ContainerFilterBase) filterContainers() cluster.Containers {
 	}
 	if len(containers) < n+minNum && !isContainersLeftBigger {
 		containers = containers[minNum:]
-		log.Debugf("container num < n + minNumber: %d", len(containers))
+		logrus.Debugf("container num < n + minNumber: %d", len(containers))
 	}
 	return containers
 }

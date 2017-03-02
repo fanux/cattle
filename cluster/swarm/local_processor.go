@@ -1,11 +1,14 @@
 package swarm
 
 import (
+	"context"
 	"errors"
 	"math/rand"
 	"strconv"
+	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/docker/docker/client"
 	"github.com/docker/swarm/cluster"
 	"github.com/docker/swarm/common"
 )
@@ -78,5 +81,25 @@ func (t *LocalProcessor) startContainer(container *cluster.Container) (c string,
 
 func (t *LocalProcessor) stopContainer(container *cluster.Container) (c string, err error) {
 	logrus.Debugf("stop container: %s", container.Names)
-	return "", nil
+
+	//TODO add timeout
+	err = StopContainer(container, 0)
+	if err != nil {
+		logrus.Errorf("Stop container error: %s", err)
+		return "", err
+	}
+
+	return container.Names[0], nil
+}
+
+//StopContainer is
+func StopContainer(container *cluster.Container, timeout time.Duration) error {
+	ctx := context.Background()
+	logrus.Debugf("Stop container engine addr is: %s", container.Engine.Addr)
+	cli, err := client.NewClient(container.Engine.Addr, "v1.26", nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return cli.ContainerStop(ctx, container.ID, &timeout)
 }
