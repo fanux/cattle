@@ -29,7 +29,7 @@ var (
 				flRefreshIntervalMin, flRefreshIntervalMax, flFailureRetry, flRefreshRetry,
 				flHeartBeat,
 				flEnableCors,
-				flCluster, flDiscoveryOpt, flClusterOpt, flRefreshOnNodeFilter, flContainerNameRefreshFilter},
+				flCluster, flDiscoveryOpt, flClusterOpt},
 			Action: manage,
 		},
 		{
@@ -38,6 +38,13 @@ var (
 			Usage:     "Join a docker cluster",
 			Flags:     []cli.Flag{flJoinAdvertise, flHeartBeat, flTTL, flJoinRandomDelay, flDiscoveryOpt},
 			Action:    join,
+		},
+		{
+			Name:      "scale",
+			ShortName: "s",
+			Usage:     "Scale up or down containers",
+			Flags:     []cli.Flag{flScaleHost, flScaleENV, flScaleLabel, flScaleFilter, flScaleNumber},
+			Action:    scale,
 		},
 	}
 )

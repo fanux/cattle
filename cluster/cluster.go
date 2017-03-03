@@ -3,8 +3,8 @@ package cluster
 import (
 	"io"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/volume"
+	"github.com/docker/engine-api/types"
+	"github.com/docker/swarm/common"
 	"github.com/samalba/dockerclient"
 )
 
@@ -46,7 +46,7 @@ type Cluster interface {
 	RemoveNetwork(network *Network) error
 
 	// Create a volume
-	CreateVolume(request *volume.VolumesCreateBody) (*types.Volume, error)
+	CreateVolume(request *types.VolumeCreateRequest) (*types.Volume, error)
 
 	// Return all volumes
 	Volumes() Volumes
@@ -101,9 +101,6 @@ type Cluster interface {
 	// Tag an image
 	TagImage(IDOrName string, ref string, force bool) error
 
-	// Refresh a single cluster engine
-	RefreshEngine(hostname string) error
-
-	// Refresh all engines in the cluster
-	RefreshEngines() error
+	// Scale containers and return the scale up or down containers id
+	Scale(scaleConfig common.ScaleAPI) []string
 }

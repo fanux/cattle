@@ -1,79 +1,189 @@
-# Swarm: a Docker-native clustering system
+[![Build Status](http://10.1.86.50:8000/api/badges/fanux/cattle/status.svg)](http://10.1.86.50:8000/fanux/cattle)
+## Why cattle  
+1. Swarm does not support scale command or API. Cattle support scale service with filters.
+2. Scale up is easy, but when some high priority service want to seize low priority resources, how to decide which service to scale down?
+3. Stop container after inform app.
 
-[![GoDoc](https://godoc.org/github.com/docker/swarm?status.png)](https://godoc.org/github.com/docker/swarm)
-[![Jenkins Build Status](https://jenkins.dockerproject.org/view/Swarm/job/Swarm%20Master/badge/icon)](https://jenkins.dockerproject.org/view/Swarm/job/Swarm%20Master/)
-[![Build Status](https://travis-ci.org/docker/swarm.svg?branch=master)](https://travis-ci.org/docker/swarm)
-[![Go Report Card](https://goreportcard.com/badge/github.com/docker/swarm)](https://goreportcard.com/report/github.com/docker/swarm)
+Cattle solve those problems. 
 
-![Docker Swarm Logo](logo.png?raw=true "Docker Swarm Logo")
+## Special labels: Namespace, service, app
+* Namespace is a collection of containers or nodes. `docker run -l namespace=swarm swarm:latest`
+* Service is a collection of different kinds of containers. For example, you can define `nginx,mysql,php` container as the same service :`docker run -l service=web-service ...`
+* App is a collection of the same kind of containers. For example, you run 5 replication of nginx, all set the `app=nginx` label.
 
-Docker Swarm is native clustering for Docker. It turns a pool of Docker hosts
-into a single, virtual host.
+## Container priority, min number
+```
+$ docker run -e PRIORITY=10 -e MIN_NUMBER=3 -l service=online --name nginx nginx:latest
+$ docker run -e PRIORITY=1 -e MIN_NUMBER=1 -l service=offline --name nginx httpd:latest
+```
 
-## Swarm Disambiguation
+## Scale up or down
+Scale up: suggest use docker compose service as a scale unit.
+```
+$ cattle scale [[env|label] filter number]
+```
+```
+$ cattle scale -f service==online -n 5      # scale by service, which container has `-l service=online`
+$ cattle scale -f name==nginx -n 5          # scale by container name, which container has `--name nginx`
+$ cattle scale -f foo==bar -n 5             # scale by the label, just select a container has `foo=bar` label, and scale it(not all the containers!).
+```
+The same app will not scale up again, judged by label `-l app=xxx`:
+```
+  php:2 total                                            php:2+3=5 total                                    
+  redis:1 total                                          redis:1+3=4 total                                  
+  +-------------+                                        +-------------+ +-------------+ +-------------+    
+  | service=web |                                        | service=web | | service=web | | service=web |    
+  | app=php     |                                        | app=php     | | app=php     | | app=redis   |    
+  +-------------+                                        +-------------+ +-------------+ +-------------+    
+  +-------------+                                        +-------------+ +-------------+ +-------------+    
+  | service=web | cattle scale -f service==web -n 3      | service=web | | service=web | | service=web |    
+  | app=php     |====================================>   | app=php     | | app=php     | | app=redis   |    
+  +-------------+                                        +-------------+ +-------------+ +-------------+    
+  +-------------+                                        +-------------+ +-------------+ +-------------+    
+  | service=web |                                        | service=web | | service=web | | service=web |    
+  | app=redis   |                                        | app=php     | | app=redis   | | app=redis   |    
+  +-------------+                                        +-------------+ +-------------+ +-------------+    
+```
 
-**Docker Swarm standalone**: This project. A native clustering system for
-Docker. It turns a pool of Docker hosts into a single, virtual host using an
-API proxy system. See [Docker Swarm overview](https://docs.docker.com/swarm/overview/).
-It is Docker's first container orchestration project that began in 2014.
-Combined with Docker Compose, it's a very convenient tool to schedule containers.
-Its flexibility and simplicity make it easy to integrate with existing IT infrastructure.
-Many companies and users have deployed Docker Swarm standalone for production and experimental
-projects. Docker does not currently have a plan to deprecate Docker Swarm.
-The Docker API is backward compatible so Docker Swarm will continue to work with
-future Docker Engine versions.
+Scale down:
+```
+$ cattle scale -f service==online -n -5
+```
+Filter: cattle scale complete compatible to swarm filter, just set ENV and labels to new container.
 
-**[Swarmkit](https://github.com/docker/swarmkit)**: Cluster
-management and orchestration features in Docker Engine 1.12 or later. When Swarmkit
-is enabled we call Docker Engine running in swarm mode. See the
-feature list: [Swarm mode overview](https://docs.docker.com/engine/swarm/).
-This project focuses on micro-service architecture. It supports service
-reconciliation, load balancing, service discovery, built-in certificate rotation, etc.
-Swarm mode is Docker's response to the community's request to simplify service orchestration.
+If the scale number < 0, will scale down containers on the node witch has `storage=ssd` label.
+```
+$ cattle scale -e constraint:storage==ssd -l app=scale-up-nginx -f service==online -n 5 
+```
 
-While the 2 projects may accomplish similar tasks, they work on different levels
-in terms of service architecture. Users can choose which one is more suitable for their workload.
-If you're in doubt, Docker recommends that you try Docker 1.12 and later with built-in swarm mode.
 
-## Docker Swarm standalone
+If the container set the ENV MIN_NUMBER=x, cattle will guarantee has x containers left after scale down. 
+```
+ php:5 total MIN_NUMBER=3                                                            php:3 left
+ redis:4 total MIN_NUMBER=1                                                          redis:1 left
+ +-------------+ +-------------+ +-------------+                                     +-------------+ +-------------+
+ | service=web | | service=web | | service=web |                                     | service=web | | service=web |
+ | app=php     | | app=php     | | app=redis   |                                     | app=php     | | app=redis   |
+ +-------------+ +-------------+ +-------------+                                     +-------------+ +-------------+
+ +-------------+ +-------------+ +-------------+                                     +-------------+
+ | service=web | | service=web | | service=web | cattle scale -f service==web -n -3  | service=web |
+ | app=php     | | app=php     | | app=redis   | ==================================> | app=php     |
+ +-------------+ +-------------+ +-------------+ php: 5 - 3 < MIN_NUMBER=3           +-------------+
+ +-------------+ +-------------+ +-------------+ redis: 4 - 3 = MIN_NUMBER=1         +-------------+
+ | service=web | | service=web | | service=web |                                     | service=web |
+ | app=php     | | app=redis   | | app=redis   |                                     | app=php     |
+ +-------------+ +-------------+ +-------------+                                     +-------------+
+```
 
-Swarm serves the standard Docker API, so any tool which already communicates
-with a Docker daemon can use Swarm to transparently scale to multiple hosts:
-Dokku, Compose, Krane, Flynn, Deis, DockerUI, Shipyard, Drone, Jenkins... and,
-of course, the Docker client itself.
+## Resource Seize
+User `affinity:xxx!=xxx` will stop those containers witch priority is below then scale up service.
 
-Like other Docker projects, Swarm follows the "batteries included but removable"
-principle. It ships with a set of simple scheduling backends out of the box, and
-as initial development settles, an API will be developed to enable pluggable
-backends. The goal is to provide a smooth out-of-the-box experience for simple
-use cases, and allow swapping in more powerful backends, like Mesos, for large
-scale production deployments.
+Suggest there are four nodes with `GPU=true` label in our cluster. There are 2 services: online and offline. The MIN_NUMBER of offline is 1, onlie has higher priority 1 and offline has lower priority 9.
+```
+ node: GPU=true            node: GPU=true            node: GPU=true            node: GPU=true
+ +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+
+ | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |
+ | | service=online |    | | | service=offline|    | | | service=offline|    | | | service=offline|    |
+ | | priority=1     |    | | | priority=9     |    | | | priority=9     |    | | | priority=9     |    |
+ | |                |    | | | MIN_NUMBER=1   |    | | | MIN_NUMBER=1   |    | | | MIN_NUMBER=1   |    |
+ | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |
+ +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+
+                                                    | cattle scale -e constraint:GPU==true       \     # I need GPU nodes
+                                                    |              -e affinity:service!=offline  \     # I seize the offline resource
+                                                    |              -f service==online  -n 3            # Scale up 3 online service instances
+                                                    V
+ node: GPU=true            node: GPU=true            node: GPU=true            node: GPU=true
+ +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+   Want scale up 3 online service instances, but only 2 successed, because must
+ | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |   ensure the MIN_NUMBER of offline service left.
+ | | service=online |    | | | service=online |    | | | service=online |    | | | service=offline|    |
+ | | priority=1     |    | | | priority=1     |    | | | priority=1     |    | | | priority=9     |    |
+ | |                |    | | |                |    | | |                |    | | | MIN_NUMBER=1   |    |
+ | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |
+ +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+
+                                                    | cattle scale -e constraint:GPU==true \           # Want scale up offline service
+                                                    |              -e affinity:service!=online \
+                                                    |              -f service==offline -n 2
+                                                    V
+ node: GPU=true            node: GPU=true            node: GPU=true            node: GPU=true
+ +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+ Seize resource failed. Because the offline
+ | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    | priority is lower. Offline service must wait
+ | | service=online |    | | | service=online |    | | | service=online |    | | | service=offline|    | online service initiative release its resource.
+ | | priority=1     |    | | | priority=1     |    | | | priority=1     |    | | | priority=9     |    |
+ | |                |    | | |                |    | | |                |    | | | MIN_NUMBER=1   |    |
+ | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |
+ +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+
+                                                    | cattle scale -f service==online -n -2
+                                                    V
+ node: GPU=true            node: GPU=true            node: GPU=true            node: GPU=true
+ +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+ Online service initiative release its resource.
+ | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |
+ | | service=online |    | | |                |    | | |                |    | | | service=offline|    |
+ | | priority=1     |    | | |                |    | | |                |    | | | priority=9     |    |
+ | |                |    | | |                |    | | |                |    | | | MIN_NUMBER=1   |    |
+ | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |
+ +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+
+                                                    | cattle scale -f service==offline -n 2
+                                                    V
+ node: GPU=true            node: GPU=true            node: GPU=true            node: GPU=true
+ +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+
+ | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |
+ | | service=online |    | | | service=offline|    | | | service=offline|    | | | service=offline|    |
+ | | priority=1     |    | | | priority=9     |    | | | priority=9     |    | | | priority=9     |    |
+ | |                |    | | | MIN_NUMBER=1   |    | | | MIN_NUMBER=1   |    | | | MIN_NUMBER=1   |    |
+ | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |
+ +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+
+```
 
-## Installation for Swarm Users
+## Inform App Hook 
+Before stop a container, must inform it to do some clean work.
+```
+-e STOP_HOOK="www.iflytek.com/stop" \
+-e WAIT_TIME=60s
+```
 
-For instructions on using Swarm in your dev, test or production environment, refer to the Docker Swarm documentation on [docs.docker.com](http://docs.docker.com/swarm/).
+```
+     www.iflytek.com/stop           cattle
+             |        PRE_STOP        |
+             |<-----------------------|
+             |     container info     | sleep 60s
+             |                        |
+             |       POST_STOP        | stop the container
+             |<-----------------------|
+             |    container info      |
+             V                        V
+```
 
-## Building Swarm from Source
+### containerlots support
+```
+$ docker run -l app=foo -e "containerslots=2" foo:latest
+```
+One host run less then 2 containers which has `app=foo` label. (`app` is a special label)
 
-To compile Swarm from source code, refer to the instructions in [CONTRIBUTING.md](http://github.com/docker/swarm/blob/master/CONTRIBUTING.md)
+### create containers with replication
+```
+$ docker run -e "replica==3" foo:latest
+```
+This command will create 3 containers using `foo:latest` image.
 
-## Participating
+### support task types
+Scale up container has two types task currently. Create container or start a stoped container.
 
-You can contribute to Docker Swarm in several different ways:
+By default cattle create new container. If you don't want to create new containers, using -e TASK_TYPE=start
 
-  - If you have comments, questions, or want to use your knowledge to help others, come join the conversation on IRC. You can reach us at #docker-swarm on Freenode.
+```
+$ cattle scale -f key==value -e TASK_TYPE=start -n 5
+$ cattle scale -f key==value -e TASK_TYPE=create -n 5
+```
 
-  - To report a problem or request a feature, please file an issue.
+Scale down has many task types as well, cattle destroy containers by default, if you want stop container:
+```
+$ cattle scale -f key==value -e TASK_TYPE=stop -n -5
+$ cattle scale -f key==value -e TASK_TYPE=destroy -n -5
+```
 
-  - Of course, we welcome pull requests and patches.  Setting up a local Swarm development environment and submitting PRs is described [here](http://github.com/docker/swarm/blob/master/CONTRIBUTING.md).
-
-Finally, if you want to see what we have for the future and learn more about our release cycles, all this information is detailed on the [wiki](https://github.com/docker/swarm/wiki)
-
-## Copyright and license
-
-Copyright © 2014-2016 Docker, Inc. All rights reserved, except as follows. Code
-is released under the Apache 2.0 license. The README.md file, and files in the
-"docs" folder are licensed under the Creative Commons Attribution 4.0
-International License under the terms and conditions set forth in the file
-"LICENSE.docs". You may obtain a duplicate copy of the same license, titled
-CC-BY-SA-4.0, at http://creativecommons.org/licenses/by/4.0/.
+### TimeSlice
+Container will stop or remove after TimeSlice.
+```
+$ cattle scale -f key==value -e TIMESLICE=2h -n 5 
+```
+This is usful for prevent high priority app don't release resource.

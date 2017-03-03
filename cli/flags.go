@@ -151,13 +151,29 @@ var (
 		Value: "20s",
 		Usage: "Leader lock release time on failure",
 	}
-
-	flRefreshOnNodeFilter = cli.BoolFlag{
-		Name:  "refresh-on-node-filter",
-		Usage: "If true, refresh the cache when a ContainerList call comes in with a node filter",
+	flScaleHost = cli.StringFlag{
+		Name:  "H",
+		Value: "http://127.0.0.1:4001",
+		Usage: "cattle manager http server host and port",
 	}
-	flContainerNameRefreshFilter = cli.StringFlag{
-		Name:  "container-name-refresh-filter",
-		Usage: "If set, refresh the cache when a ContainerList call comes in with a name filter set to this value",
+	flScaleENV = cli.StringSliceFlag{
+		Name:  "e",
+		Usage: "scale enviroment",
+		Value: &cli.StringSlice{},
+	}
+	flScaleLabel = cli.StringSliceFlag{
+		Name:  "l",
+		Usage: "scale label",
+		Value: &cli.StringSlice{},
+	}
+	flScaleFilter = cli.StringSliceFlag{
+		Name:  "f",
+		Usage: "scale filter",
+		Value: &cli.StringSlice{},
+	}
+	flScaleNumber = cli.IntFlag{
+		Name:  "n",
+		Value: 0,
+		Usage: "scale number",
 	}
 )

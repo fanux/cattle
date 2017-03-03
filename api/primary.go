@@ -81,8 +81,9 @@ var routes = map[string]map[string]handler{
 		"/exec/{execid:.*}/resize":            proxyContainer,
 		"/networks/create":                    postNetworksCreate,
 		"/networks/{networkid:.*}/connect":    proxyNetworkConnect,
-		"/networks/{networkid:.*}/disconnect": networkDisconnect,
+		"/networks/{networkid:.*}/disconnect": proxyNetworkDisconnect,
 		"/volumes/create":                     postVolumesCreate,
+		"/scale":                              postScale,
 	},
 	"PUT": {
 		"/containers/{name:.*}/archive": proxyContainer,
