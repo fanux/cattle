@@ -143,6 +143,7 @@ func TestImportImage(t *testing.T) {
 	apiClient.On("NetworkList", mock.Anything,
 		mock.AnythingOfType("NetworkListOptions"),
 	).Return([]types.NetworkResource{}, nil)
+
 	apiClient.On("VolumeList", mock.Anything, mock.Anything).Return(volume.VolumesListOKBody{}, nil)
 	apiClient.On("Events", mock.Anything, mock.AnythingOfType("EventsOptions")).Return(make(chan events.Message), make(chan error))
 	apiClient.On("ImageList", mock.Anything, mock.AnythingOfType("ImageListOptions")).Return([]types.ImageSummary{}, nil)
@@ -196,6 +197,7 @@ func TestLoadImage(t *testing.T) {
 	apiClient.On("NetworkList", mock.Anything,
 		mock.AnythingOfType("NetworkListOptions"),
 	).Return([]types.NetworkResource{}, nil)
+
 	apiClient.On("VolumeList", mock.Anything, mock.Anything).Return(volume.VolumesListOKBody{}, nil)
 	apiClient.On("Events", mock.Anything, mock.AnythingOfType("EventsOptions")).Return(make(chan events.Message), make(chan error))
 	apiClient.On("ImageList", mock.Anything, mock.AnythingOfType("ImageListOptions")).Return([]types.ImageSummary{}, nil)
@@ -268,4 +270,11 @@ func TestTagImage(t *testing.T) {
 	apiClient.On("ImageTag", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	assert.Nil(t, c.TagImage("busybox", "test_busybox:latest", false))
 	assert.NotNil(t, c.TagImage("busybox_not_exists", "test_busybox:latest", false))
+}
+
+func TestParseFilterString(t *testing.T) {
+	s, _ := parseFilterString([]string{"key==value", "key!=value", "key3==value3"})
+	fmt.Println(s)
+	ss, _ := parseFilterString([]string{"keyvalue", "key=value", "key!value"})
+	fmt.Println(ss)
 }

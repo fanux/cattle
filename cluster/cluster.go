@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/volume"
+	"github.com/fanux/cattle/common"
 	"github.com/samalba/dockerclient"
 )
 
@@ -101,6 +102,8 @@ type Cluster interface {
 	// Tag an image
 	TagImage(IDOrName string, ref string, force bool) error
 
+	// Scale containers and return the scale up or down containers id
+	Scale(scaleConfig common.ScaleAPI) []string
 	// Refresh a single cluster engine
 	RefreshEngine(hostname string) error
 

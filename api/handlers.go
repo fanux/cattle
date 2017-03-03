@@ -16,6 +16,8 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/fanux/cattle/common"
+
 	apitypes "github.com/docker/docker/api/types"
 	containertypes "github.com/docker/docker/api/types/container"
 	dockerfilters "github.com/docker/docker/api/types/filters"
@@ -32,6 +34,7 @@ import (
 // APIVERSION is the API version supported by swarm manager
 const APIVERSION = "1.22"
 
+//Merge file, fuck this work!!!
 var (
 	ShouldRefreshOnNodeFilter  = false
 	ContainerNameRefreshFilter = ""
@@ -67,6 +70,7 @@ func getInfo(c *context, w http.ResponseWriter, r *http.Request) {
 
 	// API versions older than 1.22 use DriverStatus and return \b characters in the output
 	status := c.statusHandler.Status()
+
 	if c.apiVersion != "" && typesversions.LessThan(c.apiVersion, "1.22") {
 		for i := range status {
 			if status[i][0][:1] == " " {
@@ -198,6 +202,7 @@ func getImagesJSON(c *context, w http.ResponseWriter, r *http.Request) {
 	accepteds := filters.Get("node")
 	// this struct helps grouping images
 	// but still keeps their Engine infos as an array.
+
 	groupImages := make(map[string]apitypes.ImageSummary)
 	opts := cluster.ImageFilterOptions{
 		ImageListOptions: apitypes.ImageListOptions{
@@ -225,6 +230,7 @@ func getImagesJSON(c *context, w http.ResponseWriter, r *http.Request) {
 			entry.RepoDigests = append(entry.RepoDigests, image.RepoDigests...)
 			groupImages[image.ID] = entry
 		} else {
+
 			groupImages[image.ID] = image.ImageSummary
 		}
 	}
@@ -283,6 +289,7 @@ func getNetworks(c *context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	out := []*apitypes.NetworkResource{}
+
 	networks := c.cluster.Networks().Filter(filters)
 	for _, network := range networks {
 		tmp := (*network).NetworkResource
@@ -322,6 +329,7 @@ func getVolume(c *context, w http.ResponseWriter, r *http.Request) {
 
 // GET /volumes
 func getVolumes(c *context, w http.ResponseWriter, r *http.Request) {
+
 	volumesListResponse := volumetypes.VolumesListOKBody{}
 
 	// Parse filters
@@ -527,6 +535,7 @@ func getContainersJSON(c *context, w http.ResponseWriter, r *http.Request) {
 		tmp.Ports = make([]apitypes.Port, len(container.Ports))
 		for i, port := range container.Ports {
 			tmp.Ports[i] = port
+
 			if ip := net.ParseIP(port.IP); ip != nil && ip.IsUnspecified() {
 				tmp.Ports[i].IP = container.Engine.IP
 			}
@@ -1051,6 +1060,35 @@ func networkDisconnect(c *context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var engine *cluster.Engine
+
+	if disconnect.Force && network.Scope == "global" {
+		randomEngine, err := c.cluster.RANDOMENGINE()
+		if err != nil {
+			httpError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		engine = randomEngine
+	} else {
+		container := c.cluster.Container(disconnect.Container)
+		if container == nil {
+			httpError(w, fmt.Sprintf("No such container: %s", disconnect.Container), http.StatusNotFound)
+			return
+		}
+		engine = container.Engine
+	}
+
+	cb := func(resp *http.Response) {
+		// force fresh networks on this engine
+		engine.RefreshNetworks()
+	}
+
+	// request is forwarded to the container's address
+	err := proxyAsync(engine, w, r, cb)
+	engine.CheckConnectionErr(err)
+	if err != nil {
+		httpError(w, err.Error(), http.StatusNotFound)
+	}
 	container := c.cluster.Container(disconnect.Container)
 	if container == nil {
 		httpError(w, fmt.Sprintf("No such container: %s", disconnect.Container), http.StatusNotFound)
@@ -1437,4 +1475,18 @@ func notImplementedHandler(c *context, w http.ResponseWriter, r *http.Request) {
 
 func optionsHandler(c *context, w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
+}
+
+func postScale(c *context, w http.ResponseWriter, r *http.Request) {
+	scaleConfig := common.ScaleAPI{}
+
+	if err := json.NewDecoder(r.Body).Decode(&scaleConfig); err != nil {
+		httpError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	fmt.Println("got scale config: ", scaleConfig)
+
+	containers := c.cluster.Scale(scaleConfig)
+	// Response the scale containers id
+	json.NewEncoder(w).Encode(&containers)
 }
