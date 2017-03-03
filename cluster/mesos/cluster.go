@@ -14,12 +14,12 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/docker/engine-api/types"
-	containertypes "github.com/docker/engine-api/types/container"
-	networktypes "github.com/docker/engine-api/types/network"
+	"github.com/docker/docker/api/types"
+	containertypes "github.com/docker/docker/api/types/container"
+	networktypes "github.com/docker/docker/api/types/network"
+	volumetypes "github.com/docker/docker/api/types/volume"
 	"github.com/docker/swarm/cluster"
 	"github.com/docker/swarm/cluster/mesos/task"
-	"github.com/docker/swarm/common"
 	"github.com/docker/swarm/scheduler"
 	"github.com/docker/swarm/scheduler/node"
 	"github.com/gogo/protobuf/proto"
@@ -306,7 +306,7 @@ func (c *Cluster) refreshNetworks() {
 }
 
 // CreateVolume creates a volume in the cluster
-func (c *Cluster) CreateVolume(request *types.VolumeCreateRequest) (*types.Volume, error) {
+func (c *Cluster) CreateVolume(request *volumetypes.VolumesCreateBody) (*types.Volume, error) {
 	return nil, errNotSupported
 }
 
@@ -719,7 +719,10 @@ func (c *Cluster) checkNameUniqueness(name string) bool {
 	return true
 }
 
-// Scale is scale
-func (c *Cluster) Scale(scaleConfig common.ScaleAPI) []string {
+func (c *Cluster) RefreshEngine(hostname string) error {
+	return nil
+}
+
+func (c *Cluster) RefreshEngines() error {
 	return nil
 }

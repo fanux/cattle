@@ -103,23 +103,48 @@ func proxyAsync(engine *cluster.Engine, w http.ResponseWriter, r *http.Request, 
 	r.URL.Host = engine.Addr
 
 	log.WithFields(log.Fields{"method": r.Method, "url": r.URL}).Debug("Proxy request")
-	resp, err := client.Do(r)
-	if err != nil {
+
+	requestDone := make(chan struct{})
+	go func() {
+		defer close(requestDone)
+		var resp *http.Response
+		resp, err = client.Do(r)
+		if err != nil {
+			return
+		}
+		// cleanup
+		defer resp.Body.Close()
+
+		copyHeader(w.Header(), resp.Header)
+		w.WriteHeader(resp.StatusCode)
+		io.Copy(NewWriteFlusher(w), resp.Body)
+
+		if callback != nil {
+			callback(resp)
+		}
+	}()
+
+	type requestCanceler interface {
+		CancelRequest(*http.Request)
+	}
+
+	var closeNotify <-chan bool
+	if closeNotifier, ok := w.(http.CloseNotifier); ok {
+		closeNotify = closeNotifier.CloseNotify()
+	}
+	select {
+	case <-closeNotify:
+		log.WithFields(log.Fields{"method": r.Method, "url": r.URL}).Debug("user connection closed")
+		if rc, ok := client.Transport.(requestCanceler); ok {
+			rc.CancelRequest(r)
+			log.WithFields(log.Fields{"method": r.Method, "url": r.URL}).Debug("request cancelled")
+		}
+		// wait for request finish
+		<-requestDone
+		return err
+	case <-requestDone:
 		return err
 	}
-
-	copyHeader(w.Header(), resp.Header)
-	w.WriteHeader(resp.StatusCode)
-	io.Copy(NewWriteFlusher(w), resp.Body)
-
-	if callback != nil {
-		callback(resp)
-	}
-
-	// cleanup
-	resp.Body.Close()
-
-	return nil
 }
 
 func proxy(engine *cluster.Engine, w http.ResponseWriter, r *http.Request) error {
@@ -194,9 +219,29 @@ func tlsDialWithDialer(dialer *net.Dialer, network, addr string, config *tls.Con
 	// from the hostname we're connecting to.
 	if config.ServerName == "" {
 		// Make a copy to avoid polluting argument or default.
-		c := *config
+		c := &tls.Config{
+			Rand:                     config.Rand,
+			Time:                     config.Time,
+			Certificates:             config.Certificates,
+			NameToCertificate:        config.NameToCertificate,
+			GetCertificate:           config.GetCertificate,
+			RootCAs:                  config.RootCAs,
+			NextProtos:               config.NextProtos,
+			ServerName:               config.ServerName,
+			ClientAuth:               config.ClientAuth,
+			ClientCAs:                config.ClientCAs,
+			InsecureSkipVerify:       config.InsecureSkipVerify,
+			CipherSuites:             config.CipherSuites,
+			PreferServerCipherSuites: config.PreferServerCipherSuites,
+			SessionTicketsDisabled:   config.SessionTicketsDisabled,
+			SessionTicketKey:         config.SessionTicketKey,
+			ClientSessionCache:       config.ClientSessionCache,
+			MinVersion:               config.MinVersion,
+			MaxVersion:               config.MaxVersion,
+			CurvePreferences:         config.CurvePreferences,
+		}
 		c.ServerName = hostname
-		config = &c
+		config = c
 	}
 
 	conn := tls.Client(rawConn, config)
