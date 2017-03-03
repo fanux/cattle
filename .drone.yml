@@ -1,0 +1,17 @@
+build:
+   image: 192.168.86.106/devops/golang:1.7-godep
+   commands:
+     - echo "LABEL commit=$$COMMIT branch=$$BRANCH build_number=$$BUILD_NUMBER" >> Dockerfile
+     - mkdir -p $GOPATH/src/github.com/docker/swarm/ && cp -r ./* $GOPATH/src/github.com/docker/swarm/ && pwd
+     - cd $GOPATH/src/github.com/docker/swarm/ && godep go build -o cattle && cd - && cp $GOPATH/src/github.com/docker/swarm/cattle .
+
+publish:
+   docker:
+      username: admin
+      password: Harbor12345
+      registry: 192.168.86.106
+      email: fhtjob@hotmail.com
+      repo: devops/cattle
+      tag: alpha-v1.4
+      file: Dockerfile
+      insecure: true
