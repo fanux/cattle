@@ -12,7 +12,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/fanux/cattle/common"
+	"github.com/docker/swarm/common"
 
 	"github.com/docker/docker/api/types"
 	containertypes "github.com/docker/docker/api/types/container"

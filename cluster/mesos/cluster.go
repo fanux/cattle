@@ -20,6 +20,7 @@ import (
 	volumetypes "github.com/docker/docker/api/types/volume"
 	"github.com/docker/swarm/cluster"
 	"github.com/docker/swarm/cluster/mesos/task"
+	"github.com/docker/swarm/common"
 	"github.com/docker/swarm/scheduler"
 	"github.com/docker/swarm/scheduler/node"
 	"github.com/gogo/protobuf/proto"
@@ -719,10 +720,17 @@ func (c *Cluster) checkNameUniqueness(name string) bool {
 	return true
 }
 
+//RefreshEngine is
 func (c *Cluster) RefreshEngine(hostname string) error {
 	return nil
 }
 
+//RefreshEngines is
 func (c *Cluster) RefreshEngines() error {
+	return nil
+}
+
+//Scale is
+func (c *Cluster) Scale(scaleConfig common.ScaleAPI) []string {
 	return nil
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/volume"
-	"github.com/fanux/cattle/common"
+	"github.com/docker/swarm/common"
 	"github.com/samalba/dockerclient"
 )
 

@@ -16,7 +16,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/fanux/cattle/common"
+	"github.com/docker/swarm/common"
 
 	apitypes "github.com/docker/docker/api/types"
 	containertypes "github.com/docker/docker/api/types/container"
@@ -1060,35 +1060,6 @@ func networkDisconnect(c *context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var engine *cluster.Engine
-
-	if disconnect.Force && network.Scope == "global" {
-		randomEngine, err := c.cluster.RANDOMENGINE()
-		if err != nil {
-			httpError(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		engine = randomEngine
-	} else {
-		container := c.cluster.Container(disconnect.Container)
-		if container == nil {
-			httpError(w, fmt.Sprintf("No such container: %s", disconnect.Container), http.StatusNotFound)
-			return
-		}
-		engine = container.Engine
-	}
-
-	cb := func(resp *http.Response) {
-		// force fresh networks on this engine
-		engine.RefreshNetworks()
-	}
-
-	// request is forwarded to the container's address
-	err := proxyAsync(engine, w, r, cb)
-	engine.CheckConnectionErr(err)
-	if err != nil {
-		httpError(w, err.Error(), http.StatusNotFound)
-	}
 	container := c.cluster.Container(disconnect.Container)
 	if container == nil {
 		httpError(w, fmt.Sprintf("No such container: %s", disconnect.Container), http.StatusNotFound)
