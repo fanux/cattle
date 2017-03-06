@@ -96,7 +96,8 @@ func (t *LocalProcessor) stopContainer(container *cluster.Container) (c string, 
 func StopContainer(container *cluster.Container, timeout time.Duration) error {
 	ctx := context.Background()
 	logrus.Debugf("Stop container engine addr is: %s", container.Engine.Addr)
-	cli, err := client.NewClient(container.Engine.Addr, "v1.26", nil, nil)
+	//	cli, err := client.NewClient("tcp://"+container.Engine.Addr, "v1.26", nil, nil)
+	cli, err := client.NewClient("tcp://"+container.Engine.Addr, "", nil, nil)
 	if err != nil {
 		return err
 	}

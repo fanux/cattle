@@ -43,6 +43,7 @@ func (f *ContainerFilterBase) Filter() cluster.Containers {
 }
 
 func (f *ContainerFilterBase) filterContainer(filters []common.Filter, container *cluster.Container) bool {
+	logrus.Infof("Base container filters is:%v, container label is: %v", filters, container.Labels)
 	return filterContainer(filters, container)
 }
 
@@ -156,6 +157,14 @@ type CreateContainerFilter struct {
 	*ContainerFilterBase
 }
 
+//Filter is
+func (f *CreateContainerFilter) Filter() cluster.Containers {
+	if f.filterType == common.LabelKeyService {
+		return f.filterService()
+	}
+	return f.filterContainers()
+}
+
 func (f *CreateContainerFilter) filterService() cluster.Containers {
 	containers := make(map[string]*cluster.Container)
 	for _, c := range f.containers {
@@ -185,6 +194,7 @@ func (f *CreateContainerFilter) filterContainers() cluster.Containers {
 	for i, c := range f.containers {
 		if f.filterContainer(f.filters, c) {
 			f.containers = f.containers[i : i+1]
+			logrus.Infof("Got filter container: %s", f.containers[0].Names)
 			return f.containers
 		}
 	}
@@ -231,6 +241,14 @@ type DestroyContainerFilter struct {
 //StopContainerFilter is
 type StopContainerFilter struct {
 	*ContainerFilterBase
+}
+
+//Filter is
+func (f *StopContainerFilter) Filter() cluster.Containers {
+	if f.filterType == common.LabelKeyService {
+		return f.filterService()
+	}
+	return f.filterContainers()
 }
 
 func (f *StopContainerFilter) filterContainer(filters []common.Filter, container *cluster.Container) bool {
