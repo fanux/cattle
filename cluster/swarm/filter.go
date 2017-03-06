@@ -49,10 +49,11 @@ func (f *ContainerFilterBase) filterContainer(filters []common.Filter, container
 
 	switch f.taskType {
 	case common.TaskTypeDestroyContainer:
+		flag = filterContainer(filters, container)
 	case common.TaskTypeCreateContainer:
 		flag = filterContainer(filters, container)
 	case common.TaskTypeStopContainer:
-		logrus.Debugf("Start container, container status is: %s", container.State)
+		logrus.Debugf("Stop container, container status is: %s", container.State)
 		flag = filterContainer(filters, container) &&
 			(container.State == "paused" ||
 				container.State == "running")
@@ -66,6 +67,7 @@ func (f *ContainerFilterBase) filterContainer(filters []common.Filter, container
 	default:
 		logrus.Errorln("Unknow task type")
 	}
+
 	return flag
 }
 
@@ -240,6 +242,38 @@ type StartContainerFilter struct {
 	*ContainerFilterBase
 }
 
+//Filter is
+func (f *StartContainerFilter) Filter() cluster.Containers {
+	if f.filterType == common.LabelKeyService {
+		return f.filterService()
+	}
+	return f.filterContainers()
+}
+
+func (f *StartContainerFilter) filterContainers() cluster.Containers {
+	var containers cluster.Containers
+	var n int
+	if f.item.Number < 0 {
+		n = -f.item.Number
+	} else {
+		n = f.item.Number
+	}
+	for _, c := range f.containers {
+		if f.filterContainer(f.filters, c) {
+			containers = append(containers, c)
+
+			if len(containers) >= n {
+				containers = containers[:n]
+				logrus.Debugf("container num >= n : %d", len(containers))
+				break
+			}
+		}
+	}
+
+	f.containers = containers
+	return containers
+}
+
 /*
 func (f *StartContainerFilter) filterContainer(filters []common.Filter, container *cluster.Container) bool {
 	logrus.Debugf("Start container, container status is: %s", container.Status)
@@ -253,8 +287,9 @@ func (f *StartContainerFilter) filterContainer(filters []common.Filter, containe
 //AddTasks is
 func (f *StartContainerFilter) AddTasks(tasks *Tasks) {
 	tasks.AddTasks(f.containers, f.taskType)
+	logrus.Debugf("Filter out num:%d, need scale num:%d", len(f.containers), f.item.Number)
 	//if container number is less then the number you want to scale up, create it
-	if len(f.containers) < f.item.Number {
+	if len(f.containers) < f.item.Number && len(f.containers) > 0 {
 		for i := len(f.containers); i < f.item.Number; i++ {
 			tasks.AddTasks(f.containers[:1], common.TaskTypeCreateContainer)
 		}
