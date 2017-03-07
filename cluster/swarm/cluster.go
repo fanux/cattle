@@ -1156,36 +1156,12 @@ func showContainers(cs cluster.Containers) {
 
 // Scale containers
 func (c *Cluster) Scale(scaleConfig common.ScaleAPI) []string {
-	/*
-		tasks, err := c.product(scaleConfig)
-		localTasks := scaleTask.LocalTasks{tasks}
-		// return container  ids
-		containerIds, err := localTasks.Do()
-		if err != nil {
-			log.Print("Do task failed: %s", err)
-			return nil
-		}
-	*/
 	log.Debugf("swarm cluster scale: %v", scaleConfig)
-
 	tasks := NewTasks(&LocalProcessor{c})
 
 	for _, item := range scaleConfig.Items {
 		log.Debugf("scale Item: %v", item)
-		/*
-			containers := c.filterContainer(item.Filters, item.Number)
-			taskType := getTaskType(item.Number, item.ENVs)
-			log.Debugf("Task type is: %s", taskType)
 
-			if item.Number < 0 {
-				tasks.AddTasks(containers, taskType)
-			} else if item.Number > 0 {
-				//TODO must consider the task type, create and start container is different
-				for i := 0; i < item.Number; i++ {
-					tasks.AddTasks(containers, taskType)
-				}
-			}
-		*/
 		filter := NewFilter(c, &item)
 		containers := filter.Filter()
 		showContainers(containers)

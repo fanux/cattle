@@ -46,6 +46,10 @@ func generateName(name string) string {
 
 func (t *LocalProcessor) createContainer(container *cluster.Container) (c string, err error) {
 	var newContainer *cluster.Container
+
+	// Clear SwarmId, different container has different swarmid
+	// if not clear it, swarm will delete replica containers
+	container.Config.Labels[cluster.SwarmLabelNamespace+".id"] = ""
 	newContainer, err = t.Cluster.CreateContainer(container.Config, generateName(container.Names[0]), nil)
 	if err != nil {
 		logrus.Warnf("Scale up create container failed: %s", container.Names[0])
@@ -62,6 +66,12 @@ func (t *LocalProcessor) createContainer(container *cluster.Container) (c string
 func (t *LocalProcessor) destroyContainer(container *cluster.Container) (c string, err error) {
 	//may be stop container first, this is force to remove container
 	//remove volume or not remove volue, this method not remove volume
+	err = StopContainer(container, 0)
+	if err != nil {
+		logrus.Errorf("Stop container error: %s", err)
+		return "", err
+	}
+
 	if err = t.Cluster.RemoveContainer(container, true, false); err != nil {
 		logrus.Warnf("remove container failed: %s", container.Names)
 		return "", err
