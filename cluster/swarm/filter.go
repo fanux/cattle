@@ -65,7 +65,8 @@ func (f *ContainerFilterBase) filterContainer(filters []common.Filter, container
 				container.State == "restarting" ||
 				container.State == "exited")
 	default:
-		logrus.Errorln("Unknow task type")
+		flag = filterContainer(filters, container)
+		logrus.Warnln("Unknow task type")
 	}
 
 	return flag
@@ -145,6 +146,10 @@ func (f *ContainerFilterBase) filterContainers() cluster.Containers {
 
 //NewFilter is
 func NewFilter(c *Cluster, item *common.ScaleItem) (filter ContainerFilter) {
+	if IsResourceSeize(item) {
+		return NewResourceSeizeFilter(c, item)
+	}
+
 	base := new(ContainerFilterBase)
 	base.c = c
 	base.item = item
@@ -274,16 +279,6 @@ func (f *StartContainerFilter) filterContainers() cluster.Containers {
 	return containers
 }
 
-/*
-func (f *StartContainerFilter) filterContainer(filters []common.Filter, container *cluster.Container) bool {
-	logrus.Debugf("Start container, container status is: %s", container.Status)
-	return filterContainer(filters, container) &&
-		(container.Status == "paused" ||
-			container.Status == "created" ||
-			container.Status == "exited")
-}
-*/
-
 //AddTasks is
 func (f *StartContainerFilter) AddTasks(tasks *Tasks) {
 	tasks.AddTasks(f.containers, f.taskType)
@@ -313,13 +308,6 @@ func (f *StopContainerFilter) Filter() cluster.Containers {
 	}
 	return f.filterContainers()
 }
-
-/*
-func (f *StopContainerFilter) filterContainer(filters []common.Filter, container *cluster.Container) bool {
-	logrus.Debugf("Stop container, container status is: %s", container.Status)
-	return filterContainer(filters, container) && container.Status == "running"
-}
-*/
 
 func filterContainer(filters []common.Filter, container *cluster.Container) bool {
 	match := true
