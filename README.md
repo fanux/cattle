@@ -155,9 +155,9 @@ Before stop a container, must inform it to do some clean work.
 
 ### applots support
 ```
-$ docker run -l app=foo -e "applots=2" foo:latest
+$ docker run -l app=foo -e "applots=3" foo:latest
 ```
-One host run less then 2 containers which has `app=foo` label. (`app` is a special label)
+One host run less then 3 containers which has `app=foo` label. (`app` is a special label)
 
 ### create containers with replication
 ```
