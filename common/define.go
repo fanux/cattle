@@ -22,7 +22,7 @@ const (
 	TaskTypeStopContainer
 )
 
-//TASK_TYPE
+// TASK_TYPE
 const (
 	EnvTaskTypeKey = "TASK_TYPE"
 	EnvTaskStart   = "start"
@@ -31,7 +31,13 @@ const (
 	EnvTaskDestroy = "destroy"
 )
 
-//ScaleItem is
+// affinity and constaint
+const (
+	Affinity  = "affinity"
+	Constaint = "constaint"
+)
+
+// ScaleItem is
 type ScaleItem struct {
 	Filters []string
 	Number  int
@@ -39,15 +45,15 @@ type ScaleItem struct {
 	Labels  map[string]string
 }
 
-//ScaleAPI is scale http api
+// ScaleAPI is scale http api
 type ScaleAPI struct {
 	Items []ScaleItem
 }
 
-//ScaleConfig is ...
+// ScaleConfig is ...
 type ScaleConfig ScaleAPI
 
-//Filter is parse from filter string
+// Filter is parse from filter string
 type Filter struct {
 	Key      string
 	Operater string
