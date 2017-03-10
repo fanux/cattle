@@ -8,15 +8,32 @@ import (
 	"github.com/docker/swarm/common"
 )
 
+//SeizeFilter is
+type SeizeFilter interface {
+	ContainerFilter
+	SetContainers(containers cluster.Containers)
+	GetContainers() cluster.Containers
+}
+
+type filterEngine struct {
+	*cluster.Engine
+	hasInaffinityContainers bool
+}
+
 //ResourceSeizeFilter is
 type ResourceSeizeFilter struct {
-	scaleUpfilter   ContainerFilter
-	scaleDownfilter ContainerFilter
+	scaleUpfilter   SeizeFilter
+	scaleDownfilter SeizeFilter
+
+	engines               []filterEngine
+	inaffinityEngineCount int
+	freeEngineCount       int
 }
 
 //AddTasks is
 func (f *ResourceSeizeFilter) AddTasks(tasks *Tasks) {
 	f.scaleDownfilter.AddTasks(tasks)
+	//TODO if is create task type, should not using it AddTasks, using node constraint instead
 	f.scaleUpfilter.AddTasks(tasks)
 }
 
@@ -44,8 +61,8 @@ func NewResourceSeizeFilter(c *Cluster, item *common.ScaleItem) ContainerFilter 
 
 	scaleUpBase := &ContainerFilterBase{c: c, item: item, containers: c.Containers()}
 	scaleDownBase := &ContainerFilterBase{c: c, item: item, containers: c.Containers()}
-	//TODO set filter
-	//TODO set is scale service
+	//TODO set filter, the scale up filter and scale down filter is different
+	//TODO set is scale service, currently not support service seize
 
 	if isStartFilter {
 		scaleUpBase.taskType = common.TaskTypeStartContainer
@@ -66,19 +83,21 @@ func NewResourceSeizeFilter(c *Cluster, item *common.ScaleItem) ContainerFilter 
 	return rsFilter
 }
 
-//IsResourceSeize is
+//IsResourceSeize is, if has constaint and inaffinity and is scale up, we decide it is seize resource
 func IsResourceSeize(item *common.ScaleItem) bool {
-	//using other implement
-	return false
-	if item.Number < 0 {
-		logrus.Warnf("resource seize, scale number must bigger than 0, scale num is: %d", item.Number)
-		return false
-	}
+	inaffinity := false
+	constaint := false
+
 	for _, e := range item.ENVs {
 		if strings.HasPrefix(e, common.Affinity) && strings.Contains(e, "!=") {
-			logrus.Debugf("Env has affinity: %s", e)
-			return true
+			logrus.Debugf("Env has inaffinity: %s", e)
+			inaffinity = true
+		}
+		if strings.HasPrefix(e, common.Constraint) {
+			logrus.Debugf("Env has constaint: %s", e)
+			constaint = true
 		}
 	}
-	return false
+
+	return inaffinity && constaint && item.Number > 0
 }

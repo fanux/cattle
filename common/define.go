@@ -33,8 +33,8 @@ const (
 
 // affinity and constaint
 const (
-	Affinity  = "affinity"
-	Constaint = "constaint"
+	Affinity   = "affinity"
+	Constraint = "constraint"
 )
 
 // ScaleItem is
