@@ -78,7 +78,6 @@ func NewResourceSeizeFilter(c *Cluster, item *common.ScaleItem) ContainerFilter 
 		return nil
 	}
 	logrus.Debugf("got filters: %v", scaleDownBase.filters)
-
 	//TODO set is scale service, currently not support service seize
 
 	if isStartFilter {
