@@ -89,6 +89,16 @@ $ cattle scale -f app==nginx -e constraint:os==centos7 -n -5
 ```
 
 ## Resource Seize
+Resource Seize is complex, a Resource Seize scale task must has those argument:
+
+* constraint : what node resource you want to seize.
+* inaffinity : what container resource you want to seze.
+* applots    : run how many container on one node. 
+* priority   : high priority can seize low priority resource.
+
+If the free node is not enough( free-node-num * applots < need-scale-up-number), will tick the seize.
+What is a free node? The node don't have the inaffinity containers.
+
 User `affinity:xxx!=xxx` will stop those containers witch priority is below then scale up service.
 
 Suggest there are four nodes with `GPU=true` label in our cluster. There are 2 services: online and offline. The MIN_NUMBER of offline is 1, onlie has higher priority 1 and offline has lower priority 9.
@@ -102,6 +112,7 @@ Suggest there are four nodes with `GPU=true` label in our cluster. There are 2 s
  | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |
  +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+
                                                     | cattle scale -e constraint:GPU==true       \     # I need GPU nodes
+                                                    |              -e applots=1                  \     # One node one container
                                                     |              -e affinity:service!=offline  \     # I seize the offline resource
                                                     |              -f service==online  -n 3            # Scale up 3 online service instances
                                                     V
@@ -114,6 +125,7 @@ Suggest there are four nodes with `GPU=true` label in our cluster. There are 2 s
  | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |
  +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+
                                                     | cattle scale -e constraint:GPU==true \           # Want scale up offline service
+                                                    |              -e applots=1                  \     # One node one container
                                                     |              -e affinity:service!=online \
                                                     |              -f service==offline -n 2
                                                     V

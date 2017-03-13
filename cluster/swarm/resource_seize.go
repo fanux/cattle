@@ -15,11 +15,6 @@ type SeizeFilter interface {
 	GetContainers() cluster.Containers
 }
 
-type filterEngine struct {
-	*cluster.Engine
-	hasInaffinityContainers bool
-}
-
 //ResourceSeizeFilter is
 type ResourceSeizeFilter struct {
 	scaleUpfilter   SeizeFilter
@@ -27,11 +22,11 @@ type ResourceSeizeFilter struct {
 
 	c *Cluster
 
-	engines               []filterEngine
-	inaffinityEngineCount int
-	freeEngineCount       int
+	inaffinityEngines []*cluster.Engine
+	freeEngines       []*cluster.Engine
 
 	constraintFilter []common.Filter
+	inaffinities     []common.Filter
 }
 
 //AddTasks is
@@ -44,6 +39,15 @@ func (f *ResourceSeizeFilter) AddTasks(tasks *Tasks) {
 //Filter is
 func (f *ResourceSeizeFilter) Filter() cluster.Containers {
 	//filter out constraint containers
+	for _, e := range f.c.engines {
+		if filterConstraintEngine(e, f.constraintFilter) {
+			if filterInaffinitiesEngine(e, f.inaffinities) {
+				f.inaffinityEngines = append(f.inaffinityEngines, e)
+			} else {
+				f.freeEngines = append(f.freeEngines, e)
+			}
+		}
+	}
 
 	return nil
 }
@@ -89,6 +93,8 @@ func NewResourceSeizeFilter(c *Cluster, item *common.ScaleItem) ContainerFilter 
 		return nil
 	}
 	logrus.Debugf("got filters: %v", scaleDownBase.filters)
+	rsFilter.inaffinities = scaleDownBase.filters
+
 	//TODO set is scale service, currently not support service seize
 
 	if isStartFilter {
@@ -127,4 +133,14 @@ func IsResourceSeize(item *common.ScaleItem) bool {
 	}
 
 	return inaffinity && constaint && item.Number > 0
+}
+
+//if node has key=value label, constraint is key==value, return true
+func filterConstraintEngine(e *cluster.Engine, f []common.Filter) bool {
+	return false
+}
+
+//if node has container satisfy the filter, return true
+func filterInaffinitiesEngine(e *cluster.Engine, f []common.Filter) bool {
+	return false
 }
