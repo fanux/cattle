@@ -134,3 +134,47 @@ func getTaskType(n int, envs []string) int {
 	log.Errorf("Error scale num: %d", n)
 	return -1
 }
+
+func getInaffinityStrings(envs []string) []string {
+	var affinities []string
+	var ss []string
+	for _, e := range envs {
+		if strings.HasPrefix(e, common.Affinity) {
+			ss = strings.SplitN(e, ":", 2)
+			if len(ss) != 2 {
+				log.Infof("invalid affinity: %s", e)
+				continue
+			} else {
+				if strings.Contains(ss[1], "!=") {
+					affinities = append(affinities, strings.Replace(ss[1], "!=", "==", 1))
+				} else {
+					log.Infof("Not inaffinity: %s", e)
+				}
+			}
+		}
+	}
+
+	return affinities
+}
+
+func getConstaintStrings(envs []string) []string {
+	var constraints []string
+	var ss []string
+	for _, e := range envs {
+		if strings.HasPrefix(e, common.Constraint) {
+			ss = strings.SplitN(e, ":", 2)
+			if len(ss) != 2 {
+				log.Infof("invalid constraint: %s", e)
+				continue
+			} else {
+				if strings.Contains(ss[1], "!=") || strings.Contains(ss[1], "==") {
+					constraints = append(constraints, ss[1])
+				} else {
+					log.Infof("invalid constaint: %s, not contains != or ==", e)
+				}
+			}
+		}
+	}
+
+	return constraints
+}

@@ -39,6 +39,7 @@ func (f *ResourceSeizeFilter) AddTasks(tasks *Tasks) {
 
 //Filter is
 func (f *ResourceSeizeFilter) Filter() cluster.Containers {
+	//TODO filter out constraint containers
 	return nil
 }
 
@@ -61,7 +62,23 @@ func NewResourceSeizeFilter(c *Cluster, item *common.ScaleItem) ContainerFilter 
 
 	scaleUpBase := &ContainerFilterBase{c: c, item: item, containers: c.Containers()}
 	scaleDownBase := &ContainerFilterBase{c: c, item: item, containers: c.Containers()}
-	//TODO set filter, the scale up filter and scale down filter is different
+	//set filter, the scale up filter and scale down filter is different
+	var err error
+	scaleUpBase.filters, err = parseFilterString(item.Filters)
+	if err != nil {
+		logrus.Errorf("parse Filter failed! %s", err)
+		return nil
+	}
+	logrus.Debugf("got filters: %v", scaleUpBase.filters)
+
+	//set scale down filter, inafinities
+	scaleDownBase.filters, err = parseFilterString(getInaffinityStrings(item.ENVs))
+	if err != nil {
+		logrus.Errorf("parse Filter failed! %s", err)
+		return nil
+	}
+	logrus.Debugf("got filters: %v", scaleDownBase.filters)
+
 	//TODO set is scale service, currently not support service seize
 
 	if isStartFilter {

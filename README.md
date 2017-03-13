@@ -75,6 +75,19 @@ If the container set the ENV MIN_NUMBER=x, cattle will guarantee has x container
  +-------------+ +-------------+ +-------------+                                     +-------------+
 ```
 
+### Scale with constraint
+scale up to nodes whatever you want, scale down containers on nodes you assign.
+
+scale up nginx to node without GPU:
+```
+$ cattle scale -f app==nginx -e constraint:GPU!=true -n 5
+```
+
+only scale down nginx on centos7 node:
+```
+$ cattle scale -f app==nginx -e constraint:os==centos7 -n -5
+```
+
 ## Resource Seize
 User `affinity:xxx!=xxx` will stop those containers witch priority is below then scale up service.
 
