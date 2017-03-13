@@ -25,9 +25,13 @@ type ResourceSeizeFilter struct {
 	scaleUpfilter   SeizeFilter
 	scaleDownfilter SeizeFilter
 
+	c *Cluster
+
 	engines               []filterEngine
 	inaffinityEngineCount int
 	freeEngineCount       int
+
+	constraintFilter []common.Filter
 }
 
 //AddTasks is
@@ -39,13 +43,14 @@ func (f *ResourceSeizeFilter) AddTasks(tasks *Tasks) {
 
 //Filter is
 func (f *ResourceSeizeFilter) Filter() cluster.Containers {
-	//TODO filter out constraint containers
+	//filter out constraint containers
+
 	return nil
 }
 
 //NewResourceSeizeFilter is
 func NewResourceSeizeFilter(c *Cluster, item *common.ScaleItem) ContainerFilter {
-	rsFilter := &ResourceSeizeFilter{}
+	rsFilter := &ResourceSeizeFilter{c: c}
 	isStartFilter := false
 	isStopFilter := false
 
@@ -59,11 +64,17 @@ func NewResourceSeizeFilter(c *Cluster, item *common.ScaleItem) ContainerFilter 
 			}
 		}
 	}
+	var err error
+	rsFilter.constraintFilter, err = parseFilterString(getConstaintStrings(item.ENVs))
+	if err != nil {
+		logrus.Errorf("parse Filter failed! %s", err)
+		return nil
+	}
+	logrus.Debugf("got filters: %v", rsFilter.constraintFilter)
 
 	scaleUpBase := &ContainerFilterBase{c: c, item: item, containers: c.Containers()}
 	scaleDownBase := &ContainerFilterBase{c: c, item: item, containers: c.Containers()}
 	//set filter, the scale up filter and scale down filter is different
-	var err error
 	scaleUpBase.filters, err = parseFilterString(item.Filters)
 	if err != nil {
 		logrus.Errorf("parse Filter failed! %s", err)
