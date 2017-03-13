@@ -225,7 +225,7 @@ items:
         labels: 
             - "key=value"
         envs:
-            - "constraint:GPU=true"
+            - "constraint:GPU==true"
         
     scaleDownFoov1:
         ...
