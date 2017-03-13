@@ -200,3 +200,29 @@ Container will stop or remove after TimeSlice.
 $ cattle scale -f key==value -e TIMESLICE=2h -n 5 
 ```
 This is usful for prevent high priority app don't release resource.
+
+## task add and action
+Add command not do tasks immediately, send request to manager when excute action command!
+this is useful for rolling update. manager will scale up and down alternately
+```
+$ cattle add -f app==foov2 -n 5
+$ cattle add -f app==foov1 -n -5
+```
+```
+$ cattle action
+```
+
+## scale file
+Scale file is a yaml config file. Touch a file named `scale-file.yml`:
+
+```
+version: v1
+items:
+    scaleUpFoov2:
+    scaleDownFoov1:
+```
+
+At scale: default file name is `scale-file.yml`
+```
+$ cattle -f scale-file.yml scale
+```
