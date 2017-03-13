@@ -219,7 +219,16 @@ Scale file is a yaml config file. Touch a file named `scale-file.yml`:
 version: v1
 items:
     scaleUpFoov2:
+        filters:
+            - "app==foov2"
+        number: 5
+        labels: 
+            - "key=value"
+        envs:
+            - "constraint:GPU=true"
+        
     scaleDownFoov1:
+        ...
 ```
 
 At scale: default file name is `scale-file.yml`
