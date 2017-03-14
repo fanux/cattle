@@ -186,7 +186,7 @@ One host run less then 3 containers which has `app=foo` label. (`app` is a speci
 
 ### create containers with replication
 ```
-$ docker run -e "replica==3" foo:latest
+$ docker run -e "replica=3" foo:latest
 ```
 This command will create 3 containers using `foo:latest` image.
 
