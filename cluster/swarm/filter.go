@@ -38,6 +38,16 @@ func (f *ContainerFilterBase) GetContainers() cluster.Containers {
 	return f.containers
 }
 
+//SetItem is
+func (f *ContainerFilterBase) SetItem(item *common.ScaleItem) {
+	f.item = item
+}
+
+//GetItem is
+func (f *ContainerFilterBase) GetItem() *common.ScaleItem {
+	return f.item
+}
+
 //AddTasks is
 func (f *ContainerFilterBase) AddTasks(tasks *Tasks) {
 	logrus.Infof("Using base add tasks, task type is: %d", f.taskType)

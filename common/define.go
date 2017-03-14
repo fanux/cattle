@@ -37,6 +37,11 @@ const (
 	Constraint = "constraint"
 )
 
+// default app lots
+const (
+	DefaultAppLots = 1
+)
+
 // ScaleItem is
 type ScaleItem struct {
 	Filters []string

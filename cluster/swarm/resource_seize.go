@@ -13,6 +13,8 @@ type SeizeFilter interface {
 	ContainerFilter
 	SetContainers(containers cluster.Containers)
 	GetContainers() cluster.Containers
+	SetItem(*common.ScaleItem)
+	GetItem() *common.ScaleItem
 }
 
 //ResourceSeizeFilter is
@@ -20,7 +22,8 @@ type ResourceSeizeFilter struct {
 	scaleUpfilter   SeizeFilter
 	scaleDownfilter SeizeFilter
 
-	c *Cluster
+	c    *Cluster
+	item *common.ScaleItem
 
 	inaffinityEngines []*cluster.Engine
 	freeEngines       []*cluster.Engine
@@ -54,7 +57,7 @@ func (f *ResourceSeizeFilter) Filter() cluster.Containers {
 
 //NewResourceSeizeFilter is
 func NewResourceSeizeFilter(c *Cluster, item *common.ScaleItem) ContainerFilter {
-	rsFilter := &ResourceSeizeFilter{c: c}
+	rsFilter := &ResourceSeizeFilter{c: c, item: item}
 	isStartFilter := false
 	isStopFilter := false
 
