@@ -1,6 +1,8 @@
 package swarm
 
 import (
+	"math"
+	"strconv"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
@@ -52,7 +54,59 @@ func (f *ResourceSeizeFilter) Filter() cluster.Containers {
 		}
 	}
 
-	return nil
+	applots := getApplots(f.item.ENVs)
+	if len(f.freeEngines)*applots >= f.item.Number {
+		logrus.Infof("Free node is enough for scale up, no need to seize: %d > %d", len(f.freeEngines)*applots, f.item.Number)
+	} else {
+		//resource seize
+		temp := *f.item
+		temp.Number = len(f.freeEngines)*applots - f.item.Number
+		f.scaleDownfilter.SetItem(temp)
+		needFreeEngineNumber := math.Ceil(float64(f.item.Number)/float64(applots)) - len(f.freeEngines)
+		f.setScaleDownContainers(needFreeEngineNumber)
+	}
+	f.setScaleUpContainers()
+
+	f.checkPriority()
+	f.setCreateConstraint()
+
+	return append(f.scaleDownfilter.GetContainers(), f.scaleUpfilter.GetContainers()...)
+}
+
+func (f *ResourceSeizeFilter) checkPriority() {
+	getPriority()
+}
+
+func getPriority() int {
+}
+
+func (f *ResourceSeizeFilter) setCreateConstraint() {
+}
+
+func (f *ResourceSeizeFilter) setScaleDownContainers(i int) {
+	f.inaffinityEngines = f.inaffinityEngines[:i]
+
+	temp := cluster.Containers
+	for _, e := range f.inaffinityEngines {
+		for _, c := range e.containers {
+			temp = append(temp, c)
+		}
+	}
+
+	f.scaleDownfilter.SetContainers(temp)
+	f.scaleDownfilter.Filter()
+}
+
+func (f *ResourceSeizeFilter) setScaleUpContainers() {
+	temp := cluster.Containers
+	for _, e := range f.freeEngines {
+		for _, c := range e.containers {
+			temp = append(temp, c)
+		}
+	}
+
+	f.scaleUpfilter.SetContainers(temp)
+	f.scaleUpfilter.Filter()
 }
 
 //NewResourceSeizeFilter is
@@ -140,10 +194,31 @@ func IsResourceSeize(item *common.ScaleItem) bool {
 
 //if node has key=value label, constraint is key==value, return true
 func filterConstraintEngine(e *cluster.Engine, f []common.Filter) bool {
+	//TODO
 	return false
 }
 
 //if node has container satisfy the filter, return true
 func filterInaffinitiesEngine(e *cluster.Engine, f []common.Filter) bool {
+	//TODO
 	return false
+}
+
+func getApplots(envs []string) int {
+	applotsStr, ok := getEnv(common.AppLots, envs)
+	if !ok {
+		logrus.Debugf("Cant found applots env, using default: %d", common.DefaultAppLots)
+		return common.DefaultAppLots
+	} else if len(applotsStr) > 0 {
+		a, e := strconv.Atoi(applotsStr[0])
+		if e != nil {
+			logrus.Debugf("Atoi error:%s, using default: %d", e, common.DefaultAppLots)
+			return common.DefaultAppLots
+		}
+		logrus.Debugf("Got applots:%d", a)
+		return a
+	} else {
+		logrus.Debugf("Applots env len < 1, using default: %d", common.DefaultAppLots)
+		return common.DefaultAppLots
+	}
 }

@@ -35,6 +35,7 @@ const (
 const (
 	Affinity   = "affinity"
 	Constraint = "constraint"
+	Applots    = "applots"
 )
 
 // default app lots
