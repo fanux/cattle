@@ -74,10 +74,23 @@ func (f *ResourceSeizeFilter) Filter() cluster.Containers {
 }
 
 func (f *ResourceSeizeFilter) checkPriority() {
-	getPriority()
+	containers := f.scaleUpfilter.GetContainers()
+	if len(containers) > 0 {
+		envs := containers[0].Config.Env
+	}
+	getPriority(envs)
 }
 
-func getPriority() int {
+func getPriority(envs []string) int {
+	if vs, ok := getEnv(common.EnvironmentPriority, envs); !ok {
+		logrus.Infof("Cant get priority, using default priority: %d", commom.DefaultPriority)
+		return common.DefaultPriority
+	}
+	if i, err := strconv.Atoi(vs[0]); err != nil {
+		logrus.Infof("Atoi priority error: %s, using default priority: %d", err, commom.DefaultPriority)
+		return common.DefaultPriority
+	}
+	return i
 }
 
 func (f *ResourceSeizeFilter) setCreateConstraint() {

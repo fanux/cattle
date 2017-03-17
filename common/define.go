@@ -40,7 +40,8 @@ const (
 
 // default app lots
 const (
-	DefaultAppLots = 1
+	DefaultAppLots  = 1
+	DefaultPriority = 5
 )
 
 // ScaleItem is
