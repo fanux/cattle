@@ -28,6 +28,11 @@ type ContainerFilterBase struct {
 	filters []common.Filter
 }
 
+//GetTaskType is
+func (f *ContainerFilterBase) GetTaskType() int {
+	return f.taskType
+}
+
 //SetContainers is
 func (f *ContainerFilterBase) SetContainers(containers cluster.Containers) {
 	f.containers = containers

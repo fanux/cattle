@@ -17,6 +17,7 @@ type SeizeFilter interface {
 	GetContainers() cluster.Containers
 	SetItem(*common.ScaleItem)
 	GetItem() *common.ScaleItem
+	GetTaskType() int
 }
 
 //ResourceSeizeFilter is
@@ -78,7 +79,20 @@ func (f *ResourceSeizeFilter) checkPriority() {
 	if len(containers) > 0 {
 		envs := containers[0].Config.Env
 	}
-	getPriority(envs)
+	scaleUpPriority := getPriority(envs)
+
+	containers = f.scaleDownfilter.GetContainers()
+	if len(containers) > 0 {
+		envs = containers[0].Config.Env
+	}
+	scaleDownPriority := getPriority(envs)
+
+	if scaleUpPriority > scaleDownPriority {
+		logrus.Infof("Scale up has low priority, can't seize sources.")
+		f.scaleDownfilter.SetContainers(nil)
+	} else {
+		//append scale down containers
+	}
 }
 
 func getPriority(envs []string) int {
@@ -111,7 +125,7 @@ func (f *ResourceSeizeFilter) setScaleDownContainers(i int) {
 }
 
 func (f *ResourceSeizeFilter) setScaleUpContainers() {
-	temp := cluster.Containers
+	var temp cluster.Containers
 	for _, e := range f.freeEngines {
 		for _, c := range e.containers {
 			temp = append(temp, c)
