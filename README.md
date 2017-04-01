@@ -12,6 +12,8 @@ Cattle solve those problems.
 * App is a collection of the same kind of containers. For example, you run 5 replication of nginx, all set the `app=nginx` label.
 
 ## Container priority, min number
+
+**MIN_NUMBER is going to be discard, if you don't want your app to be seized, just set a priority=0**
 ```
 $ docker run -e PRIORITY=10 -e MIN_NUMBER=3 -l service=online --name nginx nginx:latest
 $ docker run -e PRIORITY=1 -e MIN_NUMBER=1 -l service=offline --name nginx httpd:latest
@@ -246,4 +248,13 @@ items:
 At scale: default file name is `scale-file.yml`
 ```
 $ cattle -f scale-file.yml scale
+```
+## Let's run scale!!!
+Using docker cli to scale! 
+
+know that `scale` is not a real image name, if cattle get a image named `scale`, just run scale action instead of create a real container! 
+
+so we can using docker cli, and need not to install cattle cli. It convenient.
+```
+docker run scale -f ...
 ```
