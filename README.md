@@ -254,7 +254,7 @@ Using docker cli to scale!
 
 know that `scale` is not a real image name, if cattle get a image named `scale`, just run scale action instead of create a real container! 
 
-so we can using docker cli, and need not to install cattle cli. It convenient.
+so we can using docker cli, and need not to install cattle cli. It convenient. But not support scale file!
 ```
 docker run scale -f ...
 ```
