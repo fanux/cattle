@@ -78,8 +78,8 @@ func (f *SeizeResourceFilter) Filter() cluster.Containers {
 	for _, e := range f.c.engines {
 		if filterConstraintEngine(e, f.Constraints) {
 			temp := SeizeNode{engine: e, isFreeNode: true, cantSeize: false}
-			for k, v := range e.containers {
-				f.filterNodeContainers(*temp, v)
+			for k, v := range e.Containers() {
+				f.filterNodeContainers(&temp, v)
 			}
 			if temp.isFreeNode {
 				f.FreeNodesPool = append(f.FreeNodesPool, temp)
@@ -94,10 +94,9 @@ func (f *SeizeResourceFilter) Filter() cluster.Containers {
 	}
 
 	if len(f.FreeNodesPool)*f.AppLots >= f.item.Number {
-		logrus.Infof("Free node is enough for scale up, no need to seize: %d > %d", len(f.freeEngines)*applots, f.item.Number)
 		f.NodesPool = nil
 	} else {
-		f.needFreeEngineNumber = math.Ceil(float64(f.item.Number)/float64(f.AppLots)) - len(f.freeEngines)
+		f.needFreeEngineNumber = int(math.Ceil(float64(f.item.Number)/float64(f.AppLots))) - len(f.FreeNodesPool)
 		//f.NodesPool = f.NodesPool[:needFreeEngineNumber]
 	}
 
@@ -148,7 +147,7 @@ func (f *SeizeResourceFilter) doPriority() {
 		}
 	}
 
-	f.NodesPool = f.NodesPool[:needFreeEngineNumber]
+	f.NodesPool = f.NodesPool[:f.needFreeEngineNumber]
 }
 
 func (f *SeizeResourceFilter) filterNodeContainers(node *SeizeNode, c *cluster.Container) {
@@ -177,16 +176,17 @@ func (f *SeizeResourceFilter) getApplots(envs []string) int {
 	var a int
 	var e error
 	var ok bool
+	var applotsStr []string
 
-	applotsStr, ok = getEnv(common.AppLots, f.item.ENVs)
+	applotsStr, ok = getEnv(common.Applots, f.item.ENVs)
 	if ok {
 		a, e = strconv.Atoi(applotsStr[0])
-		if e {
+		if e == nil {
 			return a
 		}
 	}
 
-	applotsStr, ok = getEnv(common.AppLots, envs)
+	applotsStr, ok = getEnv(common.Applots, envs)
 	if ok {
 		a, e = strconv.Atoi(applotsStr[0])
 		if e {

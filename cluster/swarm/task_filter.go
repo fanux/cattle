@@ -11,7 +11,7 @@ import (
 //TaskFilter is
 type TaskFilter interface {
 	FilterContainer(filters []common.Filter, container *cluster.Container) bool
-	DoContainers(node, f)
+	DoContainers(SeizeNode, *SeizeResourceFilter)
 }
 
 //CreateTaskFilter is
@@ -19,12 +19,12 @@ type CreateTaskFilter struct {
 }
 
 //FilterContainer is
-func (f *CreateTaskFilter) FilterContainer(filters []common.Filter, container *cluster.Container) bool {
+func (cf *CreateTaskFilter) FilterContainer(filters []common.Filter, container *cluster.Container) bool {
 	return filterContainer(filters, container)
 }
 
 //DoContainers is
-func (f *CreateTaskFilter) DoContainers(node SeizeNode, f *SeizeResourceFilter) {
+func (cf *CreateTaskFilter) DoContainers(node SeizeNode, f *SeizeResourceFilter) {
 	var constraint string
 
 	fmt.Sprintf(constraint, "%s:node==%s", common.Constraint, node.engine.Name)
@@ -52,12 +52,12 @@ type DestroyTaskFilter struct {
 }
 
 //FilterContainer is
-func (f *DestroyTaskFilter) FilterContainer(filters []common.Filter, container *cluster.Container) bool {
+func (df *DestroyTaskFilter) FilterContainer(filters []common.Filter, container *cluster.Container) bool {
 	return filterContainer(filters, containers)
 }
 
 //DoContainers is
-func (f *DestroyTaskFilter) DoContainers(node SeizeNode, f *SeizeResourceFilter) {
+func (df *DestroyTaskFilter) DoContainers(node SeizeNode, f *SeizeResourceFilter) {
 	//TODO
 }
 
@@ -66,7 +66,7 @@ type StartTaskFilter struct {
 }
 
 //FilterContainer is
-func (f *StartTaskFilter) FilterContainer(filters []common.Filter, container *cluster.Container) bool {
+func (sf *StartTaskFilter) FilterContainer(filters []common.Filter, container *cluster.Container) bool {
 	return filterContainer(filters, container) &&
 		(container.State == "paused" ||
 			container.State == "created" ||
@@ -76,7 +76,7 @@ func (f *StartTaskFilter) FilterContainer(filters []common.Filter, container *cl
 }
 
 //DoContainers is
-func (f *StartTaskFilter) DoContainers(node SeizeNode, f *SeizeResourceFilter) {
+func (sf *StartTaskFilter) DoContainers(node SeizeNode, f *SeizeResourceFilter) {
 	var constraint string
 
 	fmt.Sprintf(constraint, "%s:node==%s", common.Constraint, node.engine.Name)
@@ -105,7 +105,7 @@ type StopTaskFilter struct {
 }
 
 //FilterContainer is
-func (f *StopTaskFilter) FilterContainer(filters []common.Filter, container *cluster.Container) bool {
+func (sf *StopTaskFilter) FilterContainer(filters []common.Filter, container *cluster.Container) bool {
 	return filterContainer(filters, container) &&
 		(container.State == "paused" ||
 			container.State == "running")
@@ -113,6 +113,6 @@ func (f *StopTaskFilter) FilterContainer(filters []common.Filter, container *clu
 }
 
 //DoContainers is
-func (f *StopTaskFilter) DoContainers(node SeizeNode, f *SeizeResourceFilter) {
+func (sf *StopTaskFilter) DoContainers(node SeizeNode, f *SeizeResourceFilter) {
 	//TODO
 }

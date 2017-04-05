@@ -220,10 +220,11 @@ func IsResourceSeize(item *common.ScaleItem) bool {
 }
 
 //if node has key=value label, constraint is key==value, return true
+/*
 func filterConstraintEngine(e *cluster.Engine, f []common.Filter) bool {
-	//TODO
 	return false
 }
+*/
 
 //if node has container satisfy the filter, return true
 func filterInaffinitiesEngine(e *cluster.Engine, f []common.Filter) bool {
