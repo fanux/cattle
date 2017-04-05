@@ -172,7 +172,7 @@ func (f *ContainerFilterBase) filterContainers() cluster.Containers {
 //NewFilter is
 func NewFilter(c *Cluster, item *common.ScaleItem) (filter ContainerFilter) {
 	if IsResourceSeize(item) {
-		return NewResourceSeizeFilter(c, item)
+		return NewSeizeResourceFilter(c, item)
 	}
 
 	base := new(ContainerFilterBase)

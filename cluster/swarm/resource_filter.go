@@ -42,8 +42,10 @@ type SeizeResourceFilter struct {
 	Inaffinities []common.Filter
 	Filters      []common.Filter
 
-	scaleUpAppPriority int
-	AppLots            int
+	scaleUpAppPriority   int
+	AppLots              int
+	scaleUpedCount       int
+	needFreeEngineNumber int
 
 	createContainer *SeizeContainer
 
@@ -54,6 +56,20 @@ type SeizeResourceFilter struct {
 //AddTasks is
 func (f *SeizeResourceFilter) AddTasks(tasks *Tasks) {
 	//get task type from SeizeContainer
+	for _, freeNode := range f.FreeNodesPool {
+		for _, c := range freeNode.scaleUpContainers {
+			tasks.AddTask(c.container, c.taskType)
+		}
+	}
+
+	for _, node := range f.NodesPool {
+		for _, c := range node.scaleUpContainers {
+			tasks.AddTask(c.container, c.taskType)
+		}
+		for _, c := range node.scaleDownContainers {
+			tasks.AddTask(c.container, c.taskType)
+		}
+	}
 }
 
 //Filter is
@@ -81,11 +97,13 @@ func (f *SeizeResourceFilter) Filter() cluster.Containers {
 		logrus.Infof("Free node is enough for scale up, no need to seize: %d > %d", len(f.freeEngines)*applots, f.item.Number)
 		f.NodesPool = nil
 	} else {
-		needFreeEngineNumber := math.Ceil(float64(f.item.Number)/float64(applots)) - len(f.freeEngines)
-		f.NodesPool = f.NodesPool[:needFreeEngineNumber]
+		f.needFreeEngineNumber = math.Ceil(float64(f.item.Number)/float64(f.AppLots)) - len(f.freeEngines)
+		//f.NodesPool = f.NodesPool[:needFreeEngineNumber]
 	}
 
 	f.doPriority()
+
+	return nil
 }
 
 //NewSeizeResourceFilter is
@@ -114,25 +132,28 @@ func NewSeizeResourceFilter(c *Cluster, item *common.ScaleItem) ContainerFilter 
 func (f *SeizeResourceFilter) doPriority() {
 	for _, node := range f.NodesPool {
 		for i, c := range node.scaleDownContainers {
-			if c.priority < f.scaleUpAppPriority {
+			if c.priority <= f.scaleUpAppPriority {
 				logrus.Infof("Can't seize high priority resource: %d < %d", c.priority, f.scaleUpAppPriority)
 				node.scaleUpContainers = nil
 				node.scaleDownContainers = nil
 				node.cantSeize = true
 				break
 			}
-
 		}
 		//set create constraint if task type is create or task type is start but number < item.Number
 		if node.cantSeize != true {
 			f.scaleUpTaskFilter.DoContainers(node, f)
+		} else {
+			f.needFreeEngineNumber++
 		}
 	}
+
+	f.NodesPool = f.NodesPool[:needFreeEngineNumber]
 }
 
 func (f *SeizeResourceFilter) filterNodeContainers(node *SeizeNode, c *cluster.Container) {
 	if f.scaleUpTaskFilter.FilterContainer(f.Filters, c) {
-		scr := f.getSeizeContainer(c)
+		scr := f.getSeizeContainer(c, f.ScaleUpTaskType)
 		node.scaleUpContainers = append(node.scaleUpContainers, scr)
 		a := f.getApplots(c.Config.Env)
 		if a != -1 && f.AppLots != -1 {
@@ -147,7 +168,7 @@ func (f *SeizeResourceFilter) filterNodeContainers(node *SeizeNode, c *cluster.C
 		}
 	}
 	if f.scaleDownTaskFilter.FilterContainer(f.Inaffinities, c) {
-		node.scaleDownContainers = append(node.scaleDownContainers, f.getSeizeContainer(c))
+		node.scaleDownContainers = append(node.scaleDownContainers, f.getSeizeContainer(c, f.ScaleUpTaskType))
 		node.isFreeNode = false
 	}
 }
@@ -176,15 +197,16 @@ func (f *SeizeResourceFilter) getApplots(envs []string) int {
 	return -1
 }
 
-func (f *SeizeResourceFilter) getSeizeContainer(c *cluster.Container) *SeizeContainer {
-	sc := &SeizeContainer{container: c}
+func (f *SeizeResourceFilter) getSeizeContainer(c *cluster.Container, taskType int) *SeizeContainer {
+	sc := &SeizeContainer{container: c, taskType: taskType}
 	p, ok := getEnv(common.EnvironmentPriority, c.Config.Env)
 	if !ok {
-		p = []string{"-1"}
-		logrus.Warnf("Uing default priority: %s", p[0])
+		sc.priority = -1
+		logrus.Warnf("Uing default priority: -1")
+	} else {
+		sc.priority, _ = strconv.Atoi(p[0])
+		logrus.Debugf("Got container priority: %d", sc.priority)
 	}
-	sc.priority, _ = strconv.Atoi(p[0])
-	logrus.Debugf("Got container priority: %d", sc.priority)
 
 	return sc
 }
@@ -212,6 +234,5 @@ func (f *SeizeResourceFilter) setTaskType() {
 
 //if node has key=value label, constraint is key==value, return true
 func filterConstraintEngine(e *cluster.Engine, f []common.Filter) bool {
-	//TODO
-	return false
+	return matchLabels(f, e.Labels)
 }

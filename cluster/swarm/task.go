@@ -38,6 +38,25 @@ func NewTasks(p TaskProssesor) *Tasks {
 	return &Tasks{nil, nil, p}
 }
 
+//AddTask is
+func (t *Tasks) AddTask(container *cluster.Container, TaskType int) {
+	if container == nil {
+		return
+	}
+
+	if t.Head == nil {
+		t.Head = ring.New(1)
+		t.Head.Value = nil
+		t.Current = t.Head
+	}
+
+	logrus.Debugf("Task Ring queue len is: %d", t.Head.Len())
+	temp := ring.New(1)
+	temp.Value = &Task{rand.Int(), TaskType, DefaultTaskRetry, container}
+	t.Current = t.Current.Link(temp)
+	t.Current = t.Current.Next()
+}
+
 //AddTasks is
 /*
     head(nil) --> current(container1) --> ...
