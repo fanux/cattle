@@ -2,6 +2,7 @@ package swarm
 
 import (
 	"regexp"
+	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm/cluster"
@@ -208,6 +209,25 @@ func NewFilter(c *Cluster, item *common.ScaleItem) (filter ContainerFilter) {
 		logrus.Errorf("Unknown task type:%d", taskType)
 	}
 	return filter
+}
+
+//IsResourceSeize is, if has constaint and inaffinity and is scale up, we decide it is seize resource
+func IsResourceSeize(item *common.ScaleItem) bool {
+	inaffinity := false
+	constaint := false
+
+	for _, e := range item.ENVs {
+		if strings.HasPrefix(e, common.Affinity) && strings.Contains(e, "!=") {
+			logrus.Debugf("Env has inaffinity: %s", e)
+			inaffinity = true
+		}
+		if strings.HasPrefix(e, common.Constraint) {
+			logrus.Debugf("Env has constaint: %s", e)
+			constaint = true
+		}
+	}
+
+	return inaffinity && constaint && item.Number > 0
 }
 
 //CreateContainerFilter is

@@ -78,7 +78,7 @@ func (f *SeizeResourceFilter) Filter() cluster.Containers {
 	for _, e := range f.c.engines {
 		if filterConstraintEngine(e, f.Constraints) {
 			temp := SeizeNode{engine: e, isFreeNode: true, cantSeize: false}
-			for k, v := range e.Containers() {
+			for _, v := range e.Containers() {
 				f.filterNodeContainers(&temp, v)
 			}
 			if temp.isFreeNode {
@@ -130,7 +130,7 @@ func NewSeizeResourceFilter(c *Cluster, item *common.ScaleItem) ContainerFilter 
 //remove high priority inaffinity containers
 func (f *SeizeResourceFilter) doPriority() {
 	for _, node := range f.NodesPool {
-		for i, c := range node.scaleDownContainers {
+		for _, c := range node.scaleDownContainers {
 			if c.priority <= f.scaleUpAppPriority {
 				logrus.Infof("Can't seize high priority resource: %d < %d", c.priority, f.scaleUpAppPriority)
 				node.scaleUpContainers = nil
@@ -189,7 +189,7 @@ func (f *SeizeResourceFilter) getApplots(envs []string) int {
 	applotsStr, ok = getEnv(common.Applots, envs)
 	if ok {
 		a, e = strconv.Atoi(applotsStr[0])
-		if e {
+		if e == nil {
 			return a
 		}
 	}
@@ -215,18 +215,18 @@ func (f *SeizeResourceFilter) setTaskType() {
 	f.ScaleUpTaskType = common.TaskTypeCreateContainer
 	f.ScaleDownTaskType = common.TaskTypeDestroyContainer
 
-	f.scaleUpTaskFilter = CreateTaskFilter{}
-	f.scaleDownTaskFilter = DestroyTaskFilter{}
+	f.scaleUpTaskFilter = &CreateTaskFilter{}
+	f.scaleDownTaskFilter = &DestroyTaskFilter{}
 
 	if values, ok := getEnv(common.EnvTaskTypeKey, f.item.ENVs); ok {
 		for _, v := range values {
 			if strings.Contains(v, common.EnvTaskStart) {
 				f.ScaleUpTaskType = common.TaskTypeStartContainer
-				f.scaleUpTaskFilter = StartTaskFilter{}
+				f.scaleUpTaskFilter = &StartTaskFilter{}
 			}
 			if strings.Contains(v, common.EnvTaskStop) {
 				f.ScaleDownTaskType = common.TaskTypeStopContainer
-				f.scaleDownTaskFilter = StopTaskFilter{}
+				f.scaleDownTaskFilter = &StopTaskFilter{}
 			}
 		}
 	}

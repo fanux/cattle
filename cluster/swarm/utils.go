@@ -192,7 +192,7 @@ func matchLabels(filters []common.Filter, labels map[string]string) bool {
 		}
 		matched, err := regexp.MatchString(f.Pattern, label)
 		if err != nil {
-			logrus.Errorf("match label failed:%s", err)
+			log.Errorf("match label failed:%s", err)
 			return false
 		}
 		if f.Operater == "==" {

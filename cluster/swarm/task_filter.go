@@ -41,7 +41,7 @@ func (cf *CreateTaskFilter) DoContainers(node SeizeNode, f *SeizeResourceFilter)
 		temp.taskType = common.TaskTypeCreateContainer
 		temp.container.Config.Env = append(temp.container.Config.Env, constraint)
 
-		node.scaleUpContainers = append(node.scaleUpContainers, temp)
+		node.scaleUpContainers = append(node.scaleUpContainers, &temp)
 
 		f.scaleUpedCount++
 	}
@@ -53,7 +53,7 @@ type DestroyTaskFilter struct {
 
 //FilterContainer is
 func (df *DestroyTaskFilter) FilterContainer(filters []common.Filter, container *cluster.Container) bool {
-	return filterContainer(filters, containers)
+	return filterContainer(filters, container)
 }
 
 //DoContainers is
@@ -94,7 +94,7 @@ func (sf *StartTaskFilter) DoContainers(node SeizeNode, f *SeizeResourceFilter) 
 		//set constraint
 		temp := *f.createContainer
 		temp.container.Config.Env = append(temp.container.Config.Env, constraint)
-		node.scaleUpContainers = append(node.scaleUpContainers, temp)
+		node.scaleUpContainers = append(node.scaleUpContainers, &temp)
 
 		f.scaleUpedCount++
 	}
