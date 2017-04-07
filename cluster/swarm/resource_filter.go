@@ -25,6 +25,7 @@ type SeizeNode struct {
 	scaleDownContainers []*SeizeContainer
 	isFreeNode          bool
 	cantSeize           bool
+	alreadyHasFree      int
 }
 
 //SeizeResourceFilter is
@@ -57,12 +58,14 @@ type SeizeResourceFilter struct {
 func (f *SeizeResourceFilter) AddTasks(tasks *Tasks) {
 	//get task type from SeizeContainer
 	for _, freeNode := range f.FreeNodesPool {
+		logrus.Debugf("add free node container task: %s", freeNode.engine.Name)
 		for _, c := range freeNode.scaleUpContainers {
 			tasks.AddTask(c.container, c.taskType)
 		}
 	}
 
 	for _, node := range f.NodesPool {
+		logrus.Debugf("add inaffinity node container task: %s", node.engine.Name)
 		for _, c := range node.scaleDownContainers {
 			tasks.AddTask(c.container, c.taskType)
 		}
@@ -77,14 +80,17 @@ func (f *SeizeResourceFilter) Filter() cluster.Containers {
 	//遍历engine 遍历, 过滤出constraint节点，遍历节点的容器，过滤容器，放到对应的队列中
 	for _, e := range f.c.engines {
 		if filterConstraintEngine(e, f.Constraints) {
-			temp := SeizeNode{engine: e, isFreeNode: true, cantSeize: false}
+			temp := SeizeNode{engine: e, isFreeNode: true, cantSeize: false, alreadyHasFree: -1}
 			for _, v := range e.Containers() {
 				f.filterNodeContainers(&temp, v)
 			}
+			logrus.Debugf("node [%s] already lelft has: %d", temp.engine.Name, temp.alreadyHasFree)
 			if temp.isFreeNode {
 				f.FreeNodesPool = append(f.FreeNodesPool, temp)
-			} else {
+			} else if temp.alreadyHasFree != 0 {
 				f.NodesPool = append(f.NodesPool, temp)
+			} else {
+				logrus.Debugf("node is already run app: %s", temp.engine.Name)
 			}
 		}
 	}
@@ -98,8 +104,10 @@ func (f *SeizeResourceFilter) Filter() cluster.Containers {
 	} else {
 		f.needFreeEngineNumber = int(math.Ceil(float64(f.item.Number)/float64(f.AppLots))) - len(f.FreeNodesPool)
 		//f.NodesPool = f.NodesPool[:needFreeEngineNumber]
-		logrus.Debugf("need free engine number is: %d", f.needFreeEngineNumber)
+		logrus.Debugf("need free engine number is: %d, need: %d, free: %d", f.needFreeEngineNumber, int(math.Ceil(float64(f.item.Number)/float64(f.AppLots))), len(f.FreeNodesPool))
 	}
+
+	//TODO where is uing free node?
 
 	f.doPriority()
 
@@ -130,25 +138,31 @@ func NewSeizeResourceFilter(c *Cluster, item *common.ScaleItem) ContainerFilter 
 
 //remove high priority inaffinity containers
 func (f *SeizeResourceFilter) doPriority() {
-	for _, node := range f.NodesPool {
-		for _, c := range node.scaleDownContainers {
+	for i := range f.NodesPool {
+		for _, c := range f.NodesPool[i].scaleDownContainers {
 			if c.priority <= f.scaleUpAppPriority {
 				logrus.Infof("Can't seize high priority resource: %d < %d", c.priority, f.scaleUpAppPriority)
-				node.scaleUpContainers = nil
-				node.scaleDownContainers = nil
-				node.cantSeize = true
+				f.NodesPool[i].scaleUpContainers = nil
+				f.NodesPool[i].scaleDownContainers = nil
+				f.NodesPool[i].cantSeize = true
 				break
 			}
 		}
 		//set create constraint if task type is create or task type is start but number < item.Number
-		if node.cantSeize != true {
-			f.scaleUpTaskFilter.DoContainers(node, f)
+		if f.NodesPool[i].cantSeize != true {
+			f.scaleUpTaskFilter.DoContainers(&f.NodesPool[i], f)
 		} else {
 			f.needFreeEngineNumber++
 		}
+
+		if f.scaleUpedCount >= f.item.Number {
+			break
+		}
 	}
 
-	f.NodesPool = f.NodesPool[:f.needFreeEngineNumber]
+	if f.needFreeEngineNumber < len(f.NodesPool) {
+		f.NodesPool = f.NodesPool[:f.needFreeEngineNumber]
+	}
 }
 
 func (f *SeizeResourceFilter) filterNodeContainers(node *SeizeNode, c *cluster.Container) {
@@ -156,7 +170,7 @@ func (f *SeizeResourceFilter) filterNodeContainers(node *SeizeNode, c *cluster.C
 		scr := f.getSeizeContainer(c, f.ScaleUpTaskType)
 		node.scaleUpContainers = append(node.scaleUpContainers, scr)
 		a := f.getApplots(c.Config.Env)
-		if a != -1 && f.AppLots != -1 {
+		if a != -1 && f.AppLots == -1 {
 			f.AppLots = a
 		}
 		if scr.priority != -1 && f.scaleUpAppPriority != -1 {
@@ -165,6 +179,12 @@ func (f *SeizeResourceFilter) filterNodeContainers(node *SeizeNode, c *cluster.C
 
 		if f.createContainer == nil {
 			f.createContainer = scr
+		}
+		node.alreadyHasFree++
+		node.isFreeNode = true
+		if len(node.scaleUpContainers) >= f.AppLots && len(node.scaleUpContainers) != 0 {
+			node.isFreeNode = false
+			node.alreadyHasFree = 0
 		}
 	}
 	if f.scaleDownTaskFilter.FilterContainer(f.Inaffinities, c) {

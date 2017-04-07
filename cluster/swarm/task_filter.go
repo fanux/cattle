@@ -11,7 +11,7 @@ import (
 //TaskFilter is
 type TaskFilter interface {
 	FilterContainer(filters []common.Filter, container *cluster.Container) bool
-	DoContainers(SeizeNode, *SeizeResourceFilter)
+	DoContainers(*SeizeNode, *SeizeResourceFilter)
 }
 
 //CreateTaskFilter is
@@ -24,7 +24,7 @@ func (cf *CreateTaskFilter) FilterContainer(filters []common.Filter, container *
 }
 
 //DoContainers is
-func (cf *CreateTaskFilter) DoContainers(node SeizeNode, f *SeizeResourceFilter) {
+func (cf *CreateTaskFilter) DoContainers(node *SeizeNode, f *SeizeResourceFilter) {
 	var constraint string
 
 	constraint = fmt.Sprintf("%s:node==%s", common.Constraint, node.engine.Name)
@@ -38,10 +38,13 @@ func (cf *CreateTaskFilter) DoContainers(node SeizeNode, f *SeizeResourceFilter)
 			break
 		}
 		//set constraint
-		temp := *f.createContainer
+		temp := &SeizeContainer{container: &cluster.Container{Config: &cluster.ContainerConfig{}}}
+		*temp.container.Config = *f.createContainer.container.Config
+		temp.container.Names = f.createContainer.container.Names
+
 		temp.taskType = common.TaskTypeCreateContainer
 		temp.container.Config.Env = append(temp.container.Config.Env, constraint)
-		node.scaleUpContainers = append(node.scaleUpContainers, &temp)
+		node.scaleUpContainers = append(node.scaleUpContainers, temp)
 		logrus.Debugf("append scaleup container: %s, env: %s", temp.container.Names[0], temp.container.Config.Env)
 
 		f.scaleUpedCount++
@@ -58,7 +61,7 @@ func (df *DestroyTaskFilter) FilterContainer(filters []common.Filter, container 
 }
 
 //DoContainers is
-func (df *DestroyTaskFilter) DoContainers(node SeizeNode, f *SeizeResourceFilter) {
+func (df *DestroyTaskFilter) DoContainers(node *SeizeNode, f *SeizeResourceFilter) {
 	//TODO
 }
 
@@ -77,7 +80,7 @@ func (sf *StartTaskFilter) FilterContainer(filters []common.Filter, container *c
 }
 
 //DoContainers is
-func (sf *StartTaskFilter) DoContainers(node SeizeNode, f *SeizeResourceFilter) {
+func (sf *StartTaskFilter) DoContainers(node *SeizeNode, f *SeizeResourceFilter) {
 	var constraint string
 
 	fmt.Sprintf(constraint, "%s:node==%s", common.Constraint, node.engine.Name)
@@ -114,6 +117,6 @@ func (sf *StopTaskFilter) FilterContainer(filters []common.Filter, container *cl
 }
 
 //DoContainers is
-func (sf *StopTaskFilter) DoContainers(node SeizeNode, f *SeizeResourceFilter) {
+func (sf *StopTaskFilter) DoContainers(node *SeizeNode, f *SeizeResourceFilter) {
 	//TODO
 }
