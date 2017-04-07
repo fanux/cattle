@@ -27,21 +27,22 @@ func (cf *CreateTaskFilter) FilterContainer(filters []common.Filter, container *
 func (cf *CreateTaskFilter) DoContainers(node SeizeNode, f *SeizeResourceFilter) {
 	var constraint string
 
-	fmt.Sprintf(constraint, "%s:node==%s", common.Constraint, node.engine.Name)
+	constraint = fmt.Sprintf("%s:node==%s", common.Constraint, node.engine.Name)
 	logrus.Debugf("scale up container contraint is: %s", constraint)
 
 	//need count already create, do not > item.Number
 	length := len(node.scaleUpContainers)
 	for i := 0; i < f.AppLots-length; i++ {
 		if f.scaleUpedCount >= f.item.Number {
+			logrus.Debugf("scale up count %d > item number %d", f.scaleUpedCount, f.item.Number)
 			break
 		}
 		//set constraint
 		temp := *f.createContainer
 		temp.taskType = common.TaskTypeCreateContainer
 		temp.container.Config.Env = append(temp.container.Config.Env, constraint)
-
 		node.scaleUpContainers = append(node.scaleUpContainers, &temp)
+		logrus.Debugf("append scaleup container: %s, env: %s", temp.container.Names[0], temp.container.Config.Env)
 
 		f.scaleUpedCount++
 	}

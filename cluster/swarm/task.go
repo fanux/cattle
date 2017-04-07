@@ -55,6 +55,7 @@ func (t *Tasks) AddTask(container *cluster.Container, TaskType int) {
 	temp.Value = &Task{rand.Int(), TaskType, DefaultTaskRetry, container}
 	t.Current = t.Current.Link(temp)
 	t.Current = t.Current.Next()
+	logrus.Debugf("Add container: %s, task type is: %d", container.Names[0], TaskType)
 }
 
 //AddTasks is

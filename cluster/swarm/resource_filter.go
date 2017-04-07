@@ -63,10 +63,10 @@ func (f *SeizeResourceFilter) AddTasks(tasks *Tasks) {
 	}
 
 	for _, node := range f.NodesPool {
-		for _, c := range node.scaleUpContainers {
+		for _, c := range node.scaleDownContainers {
 			tasks.AddTask(c.container, c.taskType)
 		}
-		for _, c := range node.scaleDownContainers {
+		for _, c := range node.scaleUpContainers {
 			tasks.AddTask(c.container, c.taskType)
 		}
 	}
@@ -98,6 +98,7 @@ func (f *SeizeResourceFilter) Filter() cluster.Containers {
 	} else {
 		f.needFreeEngineNumber = int(math.Ceil(float64(f.item.Number)/float64(f.AppLots))) - len(f.FreeNodesPool)
 		//f.NodesPool = f.NodesPool[:needFreeEngineNumber]
+		logrus.Debugf("need free engine number is: %d", f.needFreeEngineNumber)
 	}
 
 	f.doPriority()
@@ -167,7 +168,7 @@ func (f *SeizeResourceFilter) filterNodeContainers(node *SeizeNode, c *cluster.C
 		}
 	}
 	if f.scaleDownTaskFilter.FilterContainer(f.Inaffinities, c) {
-		node.scaleDownContainers = append(node.scaleDownContainers, f.getSeizeContainer(c, f.ScaleUpTaskType))
+		node.scaleDownContainers = append(node.scaleDownContainers, f.getSeizeContainer(c, f.ScaleDownTaskType))
 		node.isFreeNode = false
 	}
 }
