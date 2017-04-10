@@ -65,7 +65,7 @@ func getEnv(key string, envs []string) (values []string, ok bool) {
 }
 
 func getMinNum(envs []string) int {
-	minNum := 1
+	minNum := common.DefaultMinNum
 	var err error
 	minNums, ok := getEnv(common.EnvironmentMinNumber, envs)
 	if !ok {
@@ -73,7 +73,7 @@ func getMinNum(envs []string) int {
 	} else {
 		minNum, err = strconv.Atoi(minNums[0])
 		if err != nil {
-			minNum = 1
+			minNum = common.DefaultMinNum
 			log.Warnf("get minNumber failed:%s", err)
 		}
 	}

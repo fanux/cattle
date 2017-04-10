@@ -31,6 +31,9 @@ const (
 	EnvTaskDestroy = "destroy"
 )
 
+// EnvStopTimeout Stop time out
+const EnvStopTimeout = "STOP_TIMEOUT"
+
 // affinity and constaint
 const (
 	Affinity   = "affinity"
@@ -42,6 +45,7 @@ const (
 const (
 	DefaultAppLots  = 1
 	DefaultPriority = -1 // prevent seize all containers in cluster, when ...
+	DefaultMinNum   = 0
 )
 
 // ScaleItem is

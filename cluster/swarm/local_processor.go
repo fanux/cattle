@@ -92,7 +92,7 @@ func (t *LocalProcessor) startContainer(container *cluster.Container) (c string,
 func (t *LocalProcessor) stopContainer(container *cluster.Container) (c string, err error) {
 	logrus.Debugf("stop container: %s", container.Names)
 
-	//TODO add timeout
+	//add timeout
 	err = StopContainer(container, 0)
 	if err != nil {
 		logrus.Errorf("Stop container error: %s", err)
@@ -104,6 +104,27 @@ func (t *LocalProcessor) stopContainer(container *cluster.Container) (c string, 
 
 //StopContainer is
 func StopContainer(container *cluster.Container, timeout time.Duration) error {
+	var t time.Duration
+	ss, ok := getEnv(common.EnvStopTimeout, container.Config.Env)
+	if !ok {
+		t = 0
+	} else {
+		s, err := strconv.Atoi(ss[0])
+		if err != nil {
+			t = 0
+			logrus.Errorf("stop time out: %s", err)
+		}
+		t = time.Duration(s)
+	}
+
+	if timeout != 0 {
+		t = timeout
+	}
+
+	logrus.Debugf("container [%s] stop timeout is: %d", container.Names[0], t)
+
+	t = t * time.Second
+
 	ctx := context.Background()
 	logrus.Debugf("Stop container engine addr is: %s", container.Engine.Addr)
 	//	cli, err := client.NewClient("tcp://"+container.Engine.Addr, "v1.26", nil, nil)
@@ -112,5 +133,5 @@ func StopContainer(container *cluster.Container, timeout time.Duration) error {
 		return err
 	}
 
-	return cli.ContainerStop(ctx, container.ID, &timeout)
+	return cli.ContainerStop(ctx, container.ID, &t)
 }
