@@ -261,3 +261,8 @@ docker run scale -f ...
 ```
 
 ## STOP_TIMEOUT
+Timeout to stop a container in seconds.
+Same as the `docker stop -t 10`, Seconds to wait for stop before killing it (default 10)
+```
+$ docker run -e STOP_TIMEOUT=10 nginx:latest
+```
