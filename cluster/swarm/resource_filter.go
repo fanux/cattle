@@ -52,32 +52,51 @@ type SeizeResourceFilter struct {
 
 	NodesPool     []SeizeNode
 	FreeNodesPool []SeizeNode
+
+	filterOutContainers []*SeizeContainer
 }
 
-//AddTasks is
-func (f *SeizeResourceFilter) AddTasks(tasks *Tasks) {
+func (f *SeizeResourceFilter) reorganizeContainers() (res cluster.Containers) {
+	var temp int
+
 	//get task type from SeizeContainer
 	for _, freeNode := range f.FreeNodesPool {
+		if temp > f.item.Number {
+			logrus.Infof("free node is enough to scale up containers")
+			return
+		}
 		logrus.Debugf("add free node container task: %s", freeNode.engine.Name)
 		for _, c := range freeNode.scaleUpContainers {
-			tasks.AddTask(c.container, c.taskType)
+			f.filterOutContainers = append(f.filterOutContainers, c)
+			res = append(res, c.container)
+			temp++
 		}
 	}
 
 	for _, node := range f.NodesPool {
 		logrus.Debugf("add inaffinity node container task: %s", node.engine.Name)
 		for _, c := range node.scaleDownContainers {
-			tasks.AddTask(c.container, c.taskType)
+			f.filterOutContainers = append(f.filterOutContainers, c)
+			res = append(res, c.container)
 		}
 		for _, c := range node.scaleUpContainers {
-			tasks.AddTask(c.container, c.taskType)
+			f.filterOutContainers = append(f.filterOutContainers, c)
+			res = append(res, c.container)
 		}
+	}
+
+	return
+}
+
+//AddTasks is
+func (f *SeizeResourceFilter) AddTasks(tasks *Tasks) {
+	for _, c := range f.filterOutContainers {
+		tasks.AddTask(c.container, c.taskType)
 	}
 }
 
 //Filter is
 func (f *SeizeResourceFilter) Filter() cluster.Containers {
-	//遍历engine 遍历, 过滤出constraint节点，遍历节点的容器，过滤容器，放到对应的队列中
 	for _, e := range f.c.engines {
 		if filterConstraintEngine(e, f.Constraints) {
 			temp := SeizeNode{engine: e, isFreeNode: true, cantSeize: false, alreadyHasFree: -1}
@@ -87,10 +106,12 @@ func (f *SeizeResourceFilter) Filter() cluster.Containers {
 			logrus.Debugf("node [%s] already lelft has: %d", temp.engine.Name, temp.alreadyHasFree)
 			if temp.isFreeNode {
 				f.FreeNodesPool = append(f.FreeNodesPool, temp)
+				logrus.Debugf("node [%s] is a free node", temp.engine.Name)
 			} else if temp.alreadyHasFree != 0 {
 				f.NodesPool = append(f.NodesPool, temp)
+				logrus.Debugf("node [%s] is a inaffinity node", temp.engine.Name)
 			} else {
-				logrus.Debugf("node is already run app: %s", temp.engine.Name)
+				logrus.Debugf("node [%s] is already run app", temp.engine.Name)
 			}
 		}
 	}
@@ -107,18 +128,25 @@ func (f *SeizeResourceFilter) Filter() cluster.Containers {
 		logrus.Debugf("need free engine number is: %d, need: %d, free: %d", f.needFreeEngineNumber, int(math.Ceil(float64(f.item.Number)/float64(f.AppLots))), len(f.FreeNodesPool))
 	}
 
-	//TODO where is uing free node?
-
 	f.doPriority()
 
-	return nil
+	//where is uing free node? - do it in add tasks
+	for i := range f.FreeNodesPool {
+		f.scaleUpTaskFilter.DoContainers(&f.FreeNodesPool[i], f)
+	}
+
+	return f.reorganizeContainers()
 }
 
 //NewSeizeResourceFilter is
 func NewSeizeResourceFilter(c *Cluster, item *common.ScaleItem) ContainerFilter {
 	var err error
 
-	f := &SeizeResourceFilter{c: c, item: item, AppLots: -1, scaleUpAppPriority: -1}
+	if item.Number < 0 {
+		item.Number = -item.Number
+	}
+
+	f := &SeizeResourceFilter{c: c, item: item, AppLots: -1, scaleUpAppPriority: common.DefaultPriority}
 	f.setTaskType()
 	f.Constraints, err = parseFilterString(getConstaintStrings(item.ENVs))
 	if err != nil {
@@ -173,7 +201,7 @@ func (f *SeizeResourceFilter) filterNodeContainers(node *SeizeNode, c *cluster.C
 		if a != -1 && f.AppLots == -1 {
 			f.AppLots = a
 		}
-		if scr.priority != -1 && f.scaleUpAppPriority != -1 {
+		if scr.priority != common.DefaultPriority && f.scaleUpAppPriority != common.DefaultPriority {
 			f.scaleUpAppPriority = scr.priority
 		}
 
@@ -222,11 +250,11 @@ func (f *SeizeResourceFilter) getSeizeContainer(c *cluster.Container, taskType i
 	sc := &SeizeContainer{container: c, taskType: taskType}
 	p, ok := getEnv(common.EnvironmentPriority, c.Config.Env)
 	if !ok {
-		sc.priority = -1
-		logrus.Warnf("Uing default priority: -1")
+		sc.priority = common.DefaultPriority
+		logrus.Warnf("Uing default priority: %d", common.DefaultPriority)
 	} else {
 		sc.priority, _ = strconv.Atoi(p[0])
-		logrus.Debugf("Got container priority: %d", sc.priority)
+		logrus.Debugf("Got container [%s] priority: %d", sc.container.Names[0], sc.priority)
 	}
 
 	return sc

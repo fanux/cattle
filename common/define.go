@@ -41,7 +41,7 @@ const (
 // default app lots
 const (
 	DefaultAppLots  = 1
-	DefaultPriority = 5
+	DefaultPriority = -1 // prevent seize all containers in cluster, when ...
 )
 
 // ScaleItem is

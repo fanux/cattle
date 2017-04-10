@@ -249,6 +249,7 @@ At scale: default file name is `scale-file.yml`
 ```
 $ cattle -f scale-file.yml scale
 ```
+
 ## Let's run scale!!!
 Using docker cli to scale! 
 
@@ -258,3 +259,5 @@ so we can using docker cli, and need not to install cattle cli. It convenient. B
 ```
 docker run scale -f ...
 ```
+
+## STOP_TIMEOUT
