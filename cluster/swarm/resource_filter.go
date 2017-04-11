@@ -168,6 +168,7 @@ func NewSeizeResourceFilter(c *Cluster, item *common.ScaleItem) ContainerFilter 
 func (f *SeizeResourceFilter) doPriority() {
 	for i := range f.NodesPool {
 		for _, c := range f.NodesPool[i].scaleDownContainers {
+			logrus.Debugf("scale up container priority: [%d], container [%s] priority: [%d]", f.scaleUpAppPriority, c.container.Names[0], c.priority)
 			if c.priority <= f.scaleUpAppPriority {
 				logrus.Infof("Can't seize high priority resource: %d < %d", c.priority, f.scaleUpAppPriority)
 				f.NodesPool[i].scaleUpContainers = nil
@@ -201,7 +202,7 @@ func (f *SeizeResourceFilter) filterNodeContainers(node *SeizeNode, c *cluster.C
 		if a != -1 && f.AppLots == -1 {
 			f.AppLots = a
 		}
-		if scr.priority != common.DefaultPriority && f.scaleUpAppPriority != common.DefaultPriority {
+		if scr.priority != common.DefaultPriority && f.scaleUpAppPriority == common.DefaultPriority {
 			f.scaleUpAppPriority = scr.priority
 		}
 
