@@ -267,3 +267,4 @@ Same as the `docker stop -t 10`, Seconds to wait for stop before killing it (def
 ```
 $ docker run -e STOP_TIMEOUT=10 nginx:latest
 ```
+Warn: this env only useful for `cattle scale` command, if you use `docker stop` container will close immediately
