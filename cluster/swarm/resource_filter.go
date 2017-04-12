@@ -215,6 +215,7 @@ func (f *SeizeResourceFilter) filterNodeContainers(node *SeizeNode, c *cluster.C
 			node.isFreeNode = false
 			node.alreadyHasFree = 0
 		}
+		f.scaleUpedCount++
 	}
 	if f.scaleDownTaskFilter.FilterContainer(f.Inaffinities, c) {
 		node.scaleDownContainers = append(node.scaleDownContainers, f.getSeizeContainer(c, f.ScaleDownTaskType))

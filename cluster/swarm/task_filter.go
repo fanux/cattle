@@ -26,13 +26,23 @@ func (cf *CreateTaskFilter) FilterContainer(filters []common.Filter, container *
 //DoContainers is
 func (cf *CreateTaskFilter) DoContainers(node *SeizeNode, f *SeizeResourceFilter) {
 	var constraint string
+	var needs int
 
 	constraint = fmt.Sprintf("%s:node==%s", common.Constraint, node.engine.Name)
 	logrus.Debugf("scale up container contraint is: %s", constraint)
 
 	//need count already create, do not > item.Number
 	length := len(node.scaleUpContainers)
-	for i := 0; i < f.AppLots-length; i++ {
+
+	if f.AppLots-length < f.item.Number-f.scaleUpedCount {
+		needs = f.AppLots - length
+	} else {
+		needs = f.item.Number - f.scaleUpedCount
+	}
+
+	logrus.Debugf("node [%s] need scale up: %d, applots: %d, already container len: %d, item number: %d, scaleuped count: %d", node.engine.Name, needs, f.AppLots, length, f.item.Number, f.scaleUpedCount)
+
+	for i := 0; i < needs; i++ {
 		if f.scaleUpedCount >= f.item.Number {
 			logrus.Debugf("scale up count %d > item number %d", f.scaleUpedCount, f.item.Number)
 			break
