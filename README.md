@@ -1,4 +1,5 @@
 [![Build Status](http://10.1.86.50:8000/api/badges/fanux/cattle/status.svg)](http://10.1.86.50:8000/fanux/cattle)
+
 ## Why cattle  
 1. Swarm does not support scale command or API. Cattle support scale service with filters.
 2. Scale up is easy, but when some high priority service want to seize low priority resources, how to decide which service to scale down?
