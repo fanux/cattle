@@ -54,6 +54,11 @@ func buildRequestBody(c *cli.Context) (common.ScaleAPI, error) {
 	return body, nil
 }
 
+//SendRequest is
+func SendRequest(body common.ScaleAPI, url string) error {
+	return sendRequest(body, url)
+}
+
 func sendRequest(body common.ScaleAPI, url string) error {
 	s, err := json.Marshal(body)
 	if err != nil {
