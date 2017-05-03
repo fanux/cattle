@@ -1,6 +1,7 @@
 package swarm
 
 import (
+	"encoding/json"
 	"regexp"
 	"strings"
 
@@ -148,6 +149,8 @@ func (f *ContainerFilterBase) filterContainers() cluster.Containers {
 	} else {
 		n = f.item.Number
 	}
+
+	f.containers = filterConstraintContainers(f.containers, f.item.ENVs)
 	for _, c := range f.containers {
 		if f.filterContainer(f.filters, c) {
 			containers = append(containers, c)
@@ -179,6 +182,7 @@ func NewFilter(c *Cluster, item *common.ScaleItem) (filter ContainerFilter) {
 	base := new(ContainerFilterBase)
 	base.c = c
 	base.item = item
+	//TODO add constraint filter
 	base.containers = c.Containers()
 	if hasPrifix(item.Filters, common.LabelKeyService) {
 		base.filterType = common.LabelKeyService
@@ -272,7 +276,21 @@ func (f *CreateContainerFilter) filterContainers() cluster.Containers {
 	for i, c := range f.containers {
 		if f.filterContainer(f.filters, c) {
 			f.containers = f.containers[i : i+1]
-			logrus.Infof("Got filter container: %s", f.containers[0].Names)
+			//f.containers[0].Config.Env = append(f.containers[0].Config.Env, f.item.ENVs...)
+			//scale up to constraint node
+			//SwarmLabelNamespace+".constraints"
+			if hasConstraint(f.item.ENVs) {
+				ce := getConstaintStrings(f.item.ENVs)
+				if len(ce) > 0 {
+					cbyte, err := json.Marshal(ce)
+					if err != nil {
+						logrus.Errorf("constraints json decode error, %s", err)
+						break
+					}
+					f.containers[0].Config.Labels[cluster.SwarmLabelNamespace+".constraints"] = string(cbyte)
+				}
+			}
+			logrus.Infof("Got filter container: %s, Envs: %s", f.containers[0].Names, f.containers[0].Config.Env)
 			return f.containers
 		}
 	}
@@ -282,6 +300,7 @@ func (f *CreateContainerFilter) filterContainers() cluster.Containers {
 
 //AddTasks is
 func (f *CreateContainerFilter) AddTasks(tasks *Tasks) {
+	logrus.Infof("Add task Got filter container: %s, Envs: %s", f.containers[0].Names, f.containers[0].Config.Env)
 	for i := 0; i < f.item.Number; i++ {
 		tasks.AddTasks(f.containers, common.TaskTypeCreateContainer)
 	}
@@ -381,4 +400,44 @@ func filterContainer(filters []common.Filter, container *cluster.Container) bool
 		}
 	}
 	return match
+}
+
+//scale down which node containers
+func filterConstraintNodeByENVs(e *cluster.Engine, ENVs []string) bool {
+	constraints, err := parseFilterString(getConstaintStrings(ENVs))
+	if err != nil {
+		logrus.Errorf("parse filter string error")
+		return false
+	}
+
+	return filterConstraintEngine(e, constraints)
+}
+
+//has constraint
+//func hasConstraint(item *common.ScaleItem) bool {
+func hasConstraint(ENVs []string) bool {
+	constaint := false
+
+	for _, e := range ENVs {
+		if strings.HasPrefix(e, common.Constraint) {
+			logrus.Debugf("Env has constaint: %s", e)
+			constaint = true
+			break
+		}
+	}
+
+	return constaint
+}
+
+func filterConstraintContainers(in cluster.Containers, ENVs []string) (out cluster.Containers) {
+	if !hasConstraint(ENVs) {
+		out = in
+		return
+	}
+	for _, c := range in {
+		if filterConstraintNodeByENVs(c.Engine, ENVs) {
+			out = append(out, c)
+		}
+	}
+	return
 }

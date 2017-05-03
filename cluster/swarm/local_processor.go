@@ -51,6 +51,7 @@ func (t *LocalProcessor) createContainer(container *cluster.Container) (c string
 	// if not clear it, swarm will delete replica containers
 	container.Config.Labels[cluster.SwarmLabelNamespace+".id"] = ""
 	newContainer, err = t.Cluster.CreateContainer(container.Config, generateName(container.Names[0]), nil)
+	logrus.Debugf("create container config is: %s", container.Config.Env)
 	if err != nil {
 		logrus.Warnf("Scale up create container failed: %s", container.Names[0])
 		return "", err
