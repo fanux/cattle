@@ -3,12 +3,12 @@ package swarm
 import (
 	"context"
 	"errors"
-	"math/rand"
 	"strconv"
 	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stringid"
 	"github.com/docker/swarm/cluster"
 	"github.com/docker/swarm/common"
 )
@@ -41,7 +41,8 @@ func (t *LocalProcessor) Do(task *Task) (c string, err error) {
 }
 
 func generateName(name string) string {
-	return name + strconv.Itoa(rand.Int())
+	id := stringid.GenerateRandomID()
+	return name + id
 }
 
 func (t *LocalProcessor) createContainer(container *cluster.Container) (c string, err error) {

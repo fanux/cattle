@@ -116,10 +116,11 @@ func (t *Tasks) DoTasks() ([]string, error) {
 				continue
 			}
 			t.Current.Value.(*Task).Retry--
+		} else {
+			t.Current = t.Current.Prev()
+			t.Current.Unlink(1)
+			names = append(names, name)
 		}
-		t.Current = t.Current.Prev()
-		t.Current.Unlink(1)
-		names = append(names, name)
 	}
 	return names, nil
 }
