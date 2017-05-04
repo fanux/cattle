@@ -2,6 +2,7 @@ package swarm
 
 import (
 	"errors"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -64,7 +65,7 @@ func getEnv(key string, envs []string) (values []string, ok bool) {
 }
 
 func getMinNum(envs []string) int {
-	minNum := 1
+	minNum := common.DefaultMinNum
 	var err error
 	minNums, ok := getEnv(common.EnvironmentMinNumber, envs)
 	if !ok {
@@ -72,7 +73,7 @@ func getMinNum(envs []string) int {
 	} else {
 		minNum, err = strconv.Atoi(minNums[0])
 		if err != nil {
-			minNum = 1
+			minNum = common.DefaultMinNum
 			log.Warnf("get minNumber failed:%s", err)
 		}
 	}
@@ -83,7 +84,6 @@ func getMinNum(envs []string) int {
 func parseFilterString(f []string) (filters []common.Filter, err error) {
 	//[key==value  key!=value]
 	var i int
-	log.Debugf("parse filters: %v", filters)
 
 	filter := common.Filter{}
 
@@ -133,4 +133,78 @@ func getTaskType(n int, envs []string) int {
 
 	log.Errorf("Error scale num: %d", n)
 	return -1
+}
+
+func getInaffinityStrings(envs []string) []string {
+	var affinities []string
+	var ss []string
+	for _, e := range envs {
+		if strings.HasPrefix(e, common.Affinity) {
+			ss = strings.SplitN(e, ":", 2)
+			if len(ss) != 2 {
+				log.Infof("invalid affinity: %s", e)
+				continue
+			} else {
+				if strings.Contains(ss[1], "!=") {
+					affinities = append(affinities, strings.Replace(ss[1], "!=", "==", 1))
+				} else {
+					log.Infof("Not inaffinity: %s", e)
+				}
+			}
+		}
+	}
+
+	return affinities
+}
+
+func getConstaintStrings(envs []string) []string {
+	var constraints []string
+	var ss []string
+	for _, e := range envs {
+		if strings.HasPrefix(e, common.Constraint) {
+			ss = strings.SplitN(e, ":", 2)
+			if len(ss) != 2 {
+				log.Infof("invalid constraint: %s", e)
+				continue
+			} else {
+				if strings.Contains(ss[1], "!=") || strings.Contains(ss[1], "==") {
+					constraints = append(constraints, ss[1])
+				} else {
+					log.Infof("invalid constaint: %s, not contains != or ==", e)
+				}
+			}
+		}
+	}
+
+	return constraints
+}
+
+//filters is match container labels or engine labels
+func matchLabels(filters []common.Filter, labels map[string]string) bool {
+	match := true
+	for _, f := range filters {
+		label, ok := labels[f.Key]
+		if !ok {
+			if f.Operater == "==" {
+				return false
+			}
+		}
+		matched, err := regexp.MatchString(f.Pattern, label)
+		if err != nil {
+			log.Errorf("match label failed:%s", err)
+			return false
+		}
+		if f.Operater == "==" {
+			if !matched {
+				match = false
+				break
+			}
+		} else if f.Operater == "!=" {
+			if matched {
+				match = false
+				break
+			}
+		}
+	}
+	return match
 }

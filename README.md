@@ -14,6 +14,8 @@ Cattle solve those problems.
 * App is a collection of the same kind of containers. For example, you run 5 replication of nginx, all set the `app=nginx` label.
 
 ## Container priority, min number
+
+**MIN_NUMBER is going to be discard, if you don't want your app to be seized, just set a priority=0**
 ```
 $ docker run -e PRIORITY=10 -e MIN_NUMBER=3 -l service=online --name nginx nginx:latest
 $ docker run -e PRIORITY=1 -e MIN_NUMBER=1 -l service=offline --name nginx httpd:latest
@@ -77,7 +79,30 @@ If the container set the ENV MIN_NUMBER=x, cattle will guarantee has x container
  +-------------+ +-------------+ +-------------+                                     +-------------+
 ```
 
+### Scale with constraint
+scale up to nodes whatever you want, scale down containers on nodes you assign.
+
+scale up nginx to node without GPU:
+```
+$ cattle scale -f app==nginx -e constraint:GPU!=true -n 5
+```
+
+only scale down nginx on centos7 node:
+```
+$ cattle scale -f app==nginx -e constraint:os==centos7 -n -5
+```
+
 ## Resource Seize
+Resource Seize is complex, a Resource Seize scale task must has those argument:
+
+* constraint : what node resource you want to seize.
+* inaffinity : what container resource you want to seze.
+* applots    : run how many container on one node. 
+* priority   : high priority can seize low priority resource.
+
+If the free node is not enough( free-node-num * applots < need-scale-up-number), will tick the seize.
+What is a free node? The node don't have the inaffinity containers.
+
 User `affinity:xxx!=xxx` will stop those containers witch priority is below then scale up service.
 
 Suggest there are four nodes with `GPU=true` label in our cluster. There are 2 services: online and offline. The MIN_NUMBER of offline is 1, onlie has higher priority 1 and offline has lower priority 9.
@@ -91,6 +116,7 @@ Suggest there are four nodes with `GPU=true` label in our cluster. There are 2 s
  | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |
  +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+
                                                     | cattle scale -e constraint:GPU==true       \     # I need GPU nodes
+                                                    |              -e applots=1                  \     # One node one container
                                                     |              -e affinity:service!=offline  \     # I seize the offline resource
                                                     |              -f service==online  -n 3            # Scale up 3 online service instances
                                                     V
@@ -103,6 +129,7 @@ Suggest there are four nodes with `GPU=true` label in our cluster. There are 2 s
  | +----------------+    | | +----------------+    | | +----------------+    | | +----------------+    |
  +-----------------------+ +-----------------------+ +-----------------------+ +-----------------------+
                                                     | cattle scale -e constraint:GPU==true \           # Want scale up offline service
+                                                    |              -e applots=1                  \     # One node one container
                                                     |              -e affinity:service!=online \
                                                     |              -f service==offline -n 2
                                                     V
@@ -155,15 +182,15 @@ Before stop a container, must inform it to do some clean work.
              V                        V
 ```
 
-### containerlots support
+### applots support
 ```
-$ docker run -l app=foo -e "containerslots=2" foo:latest
+$ docker run -l app=foo -e "applots=3" foo:latest
 ```
-One host run less then 2 containers which has `app=foo` label. (`app` is a special label)
+One host run less then 3 containers which has `app=foo` label. (`app` is a special label)
 
 ### create containers with replication
 ```
-$ docker run -e "replica==3" foo:latest
+$ docker run -e "replica=3" foo:latest
 ```
 This command will create 3 containers using `foo:latest` image.
 
@@ -189,3 +216,57 @@ Container will stop or remove after TimeSlice.
 $ cattle scale -f key==value -e TIMESLICE=2h -n 5 
 ```
 This is usful for prevent high priority app don't release resource.
+
+## task add and action
+Add command not do tasks immediately, send request to manager when excute action command!
+this is useful for rolling update. manager will scale up and down alternately
+```
+$ cattle add -f app==foov2 -n 5
+$ cattle add -f app==foov1 -n -5
+```
+```
+$ cattle action
+```
+
+## scale file
+Scale file is a yaml config file. Touch a file named `scale-file.yml`:
+
+```
+version: v1
+items:
+    scaleUpFoov2:
+        filters:
+            - "app==foov2"
+        number: 5
+        labels: 
+            - "key=value"
+        envs:
+            - "constraint:GPU==true"
+        
+    scaleDownFoov1:
+        ...
+```
+
+At scale: default file name is `scale-file.yml`
+```
+$ cattle -f scale-file.yml scale
+```
+
+## Let's run scale!!!
+Using docker cli to scale! 
+
+know that `scale` is not a real image name, if cattle get a image named `scale`, just run scale action instead of create a real container! 
+
+so we can using docker cli, and need not to install cattle cli. It convenient. But not support scale file!
+```
+docker run scale -f ...
+```
+
+## STOP_TIMEOUT
+Timeout to stop a container in seconds.
+Default kill "SIGTERM" signal before stop container.
+Same as the `docker stop -t 10`, Seconds to wait for stop before killing it (default 10).
+```
+$ docker run -e STOP_TIMEOUT=10 nginx:latest
+```
+Warn: this env only useful for `cattle scale` command, if you use `docker stop` container will close immediately

@@ -19,3 +19,15 @@ func TestConvertMapToKVStrings(t *testing.T) {
 	expected := []string{"HELLO=WORLD", "a=b=c=d", "e="}
 	assert.Equal(t, expected, result)
 }
+
+func TestInaffinityStrings(t *testing.T) {
+	res := getInaffinityStrings([]string{"affinity:key!=value", "affinitykey!=value", "affinity:key==value"})
+	expected := []string{"key==value"}
+	assert.Equal(t, expected, res)
+}
+
+func TestConstaintsStrings(t *testing.T) {
+	res := getConstaintStrings([]string{"cona:key!=value", "constraint:key!=value", "constraint:key==value", "constraint:key=value"})
+	expected := []string{"key!=value", "key==value"}
+	assert.Equal(t, expected, res)
+}

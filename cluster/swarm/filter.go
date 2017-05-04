@@ -1,7 +1,9 @@
 package swarm
 
 import (
+	"encoding/json"
 	"regexp"
+	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm/cluster"
@@ -26,6 +28,31 @@ type ContainerFilterBase struct {
 	taskType   int
 
 	filters []common.Filter
+}
+
+//GetTaskType is
+func (f *ContainerFilterBase) GetTaskType() int {
+	return f.taskType
+}
+
+//SetContainers is
+func (f *ContainerFilterBase) SetContainers(containers cluster.Containers) {
+	f.containers = containers
+}
+
+//GetContainers is
+func (f *ContainerFilterBase) GetContainers() cluster.Containers {
+	return f.containers
+}
+
+//SetItem is
+func (f *ContainerFilterBase) SetItem(item *common.ScaleItem) {
+	f.item = item
+}
+
+//GetItem is
+func (f *ContainerFilterBase) GetItem() *common.ScaleItem {
+	return f.item
 }
 
 //AddTasks is
@@ -65,7 +92,8 @@ func (f *ContainerFilterBase) filterContainer(filters []common.Filter, container
 				container.State == "restarting" ||
 				container.State == "exited")
 	default:
-		logrus.Errorln("Unknow task type")
+		flag = filterContainer(filters, container)
+		logrus.Warnln("Unknow task type")
 	}
 
 	return flag
@@ -121,6 +149,8 @@ func (f *ContainerFilterBase) filterContainers() cluster.Containers {
 	} else {
 		n = f.item.Number
 	}
+
+	f.containers = filterConstraintContainers(f.containers, f.item.ENVs)
 	for _, c := range f.containers {
 		if f.filterContainer(f.filters, c) {
 			containers = append(containers, c)
@@ -145,9 +175,14 @@ func (f *ContainerFilterBase) filterContainers() cluster.Containers {
 
 //NewFilter is
 func NewFilter(c *Cluster, item *common.ScaleItem) (filter ContainerFilter) {
+	if IsResourceSeize(item) {
+		return NewSeizeResourceFilter(c, item)
+	}
+
 	base := new(ContainerFilterBase)
 	base.c = c
 	base.item = item
+	//TODO add constraint filter
 	base.containers = c.Containers()
 	if hasPrifix(item.Filters, common.LabelKeyService) {
 		base.filterType = common.LabelKeyService
@@ -178,6 +213,25 @@ func NewFilter(c *Cluster, item *common.ScaleItem) (filter ContainerFilter) {
 		logrus.Errorf("Unknown task type:%d", taskType)
 	}
 	return filter
+}
+
+//IsResourceSeize is, if has constaint and inaffinity and is scale up, we decide it is seize resource
+func IsResourceSeize(item *common.ScaleItem) bool {
+	inaffinity := false
+	constaint := false
+
+	for _, e := range item.ENVs {
+		if strings.HasPrefix(e, common.Affinity) && strings.Contains(e, "!=") {
+			logrus.Debugf("Env has inaffinity: %s", e)
+			inaffinity = true
+		}
+		if strings.HasPrefix(e, common.Constraint) {
+			logrus.Debugf("Env has constaint: %s", e)
+			constaint = true
+		}
+	}
+
+	return inaffinity && constaint && item.Number > 0
 }
 
 //CreateContainerFilter is
@@ -222,7 +276,21 @@ func (f *CreateContainerFilter) filterContainers() cluster.Containers {
 	for i, c := range f.containers {
 		if f.filterContainer(f.filters, c) {
 			f.containers = f.containers[i : i+1]
-			logrus.Infof("Got filter container: %s", f.containers[0].Names)
+			//f.containers[0].Config.Env = append(f.containers[0].Config.Env, f.item.ENVs...)
+			//scale up to constraint node
+			//SwarmLabelNamespace+".constraints"
+			if hasConstraint(f.item.ENVs) {
+				ce := getConstaintStrings(f.item.ENVs)
+				if len(ce) > 0 {
+					cbyte, err := json.Marshal(ce)
+					if err != nil {
+						logrus.Errorf("constraints json decode error, %s", err)
+						break
+					}
+					f.containers[0].Config.Labels[cluster.SwarmLabelNamespace+".constraints"] = string(cbyte)
+				}
+			}
+			logrus.Infof("Got filter container: %s, Envs: %s", f.containers[0].Names, f.containers[0].Config.Env)
 			return f.containers
 		}
 	}
@@ -232,6 +300,7 @@ func (f *CreateContainerFilter) filterContainers() cluster.Containers {
 
 //AddTasks is
 func (f *CreateContainerFilter) AddTasks(tasks *Tasks) {
+	logrus.Infof("Add task Got filter container: %s, Envs: %s", f.containers[0].Names, f.containers[0].Config.Env)
 	for i := 0; i < f.item.Number; i++ {
 		tasks.AddTasks(f.containers, common.TaskTypeCreateContainer)
 	}
@@ -274,16 +343,6 @@ func (f *StartContainerFilter) filterContainers() cluster.Containers {
 	return containers
 }
 
-/*
-func (f *StartContainerFilter) filterContainer(filters []common.Filter, container *cluster.Container) bool {
-	logrus.Debugf("Start container, container status is: %s", container.Status)
-	return filterContainer(filters, container) &&
-		(container.Status == "paused" ||
-			container.Status == "created" ||
-			container.Status == "exited")
-}
-*/
-
 //AddTasks is
 func (f *StartContainerFilter) AddTasks(tasks *Tasks) {
 	tasks.AddTasks(f.containers, f.taskType)
@@ -314,13 +373,6 @@ func (f *StopContainerFilter) Filter() cluster.Containers {
 	return f.filterContainers()
 }
 
-/*
-func (f *StopContainerFilter) filterContainer(filters []common.Filter, container *cluster.Container) bool {
-	logrus.Debugf("Stop container, container status is: %s", container.Status)
-	return filterContainer(filters, container) && container.Status == "running"
-}
-*/
-
 func filterContainer(filters []common.Filter, container *cluster.Container) bool {
 	match := true
 	for _, f := range filters {
@@ -348,4 +400,44 @@ func filterContainer(filters []common.Filter, container *cluster.Container) bool
 		}
 	}
 	return match
+}
+
+//scale down which node containers
+func filterConstraintNodeByENVs(e *cluster.Engine, ENVs []string) bool {
+	constraints, err := parseFilterString(getConstaintStrings(ENVs))
+	if err != nil {
+		logrus.Errorf("parse filter string error")
+		return false
+	}
+
+	return filterConstraintEngine(e, constraints)
+}
+
+//has constraint
+//func hasConstraint(item *common.ScaleItem) bool {
+func hasConstraint(ENVs []string) bool {
+	constaint := false
+
+	for _, e := range ENVs {
+		if strings.HasPrefix(e, common.Constraint) {
+			logrus.Debugf("Env has constaint: %s", e)
+			constaint = true
+			break
+		}
+	}
+
+	return constaint
+}
+
+func filterConstraintContainers(in cluster.Containers, ENVs []string) (out cluster.Containers) {
+	if !hasConstraint(ENVs) {
+		out = in
+		return
+	}
+	for _, c := range in {
+		if filterConstraintNodeByENVs(c.Engine, ENVs) {
+			out = append(out, c)
+		}
+	}
+	return
 }
