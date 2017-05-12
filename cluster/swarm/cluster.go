@@ -1163,6 +1163,9 @@ func (c *Cluster) Scale(scaleConfig common.ScaleAPI) []string {
 		log.Debugf("scale Item: %v", item)
 
 		filter := NewFilter(c, &item)
+		if filter == nil {
+			continue
+		}
 		containers := filter.Filter()
 		showContainers(containers)
 		filter.AddTasks(tasks)

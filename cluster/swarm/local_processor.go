@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -41,8 +42,12 @@ func (t *LocalProcessor) Do(task *Task) (c string, err error) {
 }
 
 func generateName(name string) string {
+	nameHead := strings.SplitN(name, "---", 2)
+	if len(nameHead) > 0 {
+		name = nameHead[0]
+	}
 	id := stringid.GenerateRandomID()
-	return name + id
+	return name + "---" + id[:10]
 }
 
 func (t *LocalProcessor) createContainer(container *cluster.Container) (c string, err error) {
@@ -68,16 +73,16 @@ func (t *LocalProcessor) createContainer(container *cluster.Container) (c string
 func (t *LocalProcessor) destroyContainer(container *cluster.Container) (c string, err error) {
 	//may be stop container first, this is force to remove container
 	//remove volume or not remove volue, this method not remove volume
-	err = StopContainer(container, 0)
-	if err != nil {
-		logrus.Errorf("Stop container error: %s", err)
-		return "", err
-	}
+	go func() {
+		err = StopContainer(container, 0)
+		if err != nil {
+			logrus.Errorf("Stop container error: %s", err)
+		}
 
-	if err = t.Cluster.RemoveContainer(container, true, false); err != nil {
-		logrus.Warnf("remove container failed: %s", container.Names)
-		return "", err
-	}
+		if err = t.Cluster.RemoveContainer(container, true, false); err != nil {
+			logrus.Warnf("remove container failed: %s", container.Names)
+		}
+	}()
 	return container.Names[0], nil
 }
 
@@ -94,12 +99,13 @@ func (t *LocalProcessor) startContainer(container *cluster.Container) (c string,
 func (t *LocalProcessor) stopContainer(container *cluster.Container) (c string, err error) {
 	logrus.Debugf("stop container: %s", container.Names)
 
-	//add timeout
-	err = StopContainer(container, 0)
-	if err != nil {
-		logrus.Errorf("Stop container error: %s", err)
-		return "", err
-	}
+	go func() {
+		//add timeout
+		err = StopContainer(container, 0)
+		if err != nil {
+			logrus.Errorf("Stop container error: %s", err)
+		}
+	}()
 
 	return container.Names[0], nil
 }
