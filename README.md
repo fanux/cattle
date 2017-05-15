@@ -230,7 +230,10 @@ $ cattle action
 ## multi scale command line
 Using `;` to cut multiple scale command, or lets scale command support it
 ```
-$ cattle multi -f app==foov2 -n 5;-f app==foov1 -n -5
+~~$ cattle multi -f app==foov2 -n 5;-f app==foov1 -n -5~~
+```
+```
+$ cattle scale -f app==foov2 -n 5;-f app==foov1 -n -5
 ```
 
 ## scale file
