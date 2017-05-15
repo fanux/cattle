@@ -70,7 +70,7 @@ func (f *ContainerFilterBase) Filter() cluster.Containers {
 }
 
 func (f *ContainerFilterBase) filterContainer(filters []common.Filter, container *cluster.Container) bool {
-	logrus.Infof("Base container filters is:%v, container label is: %v", filters, container.Labels)
+	logrus.Debugf("Base container filters is:%v, container label is: %v", filters, container.Labels)
 
 	flag := false
 
