@@ -217,7 +217,7 @@ $ cattle scale -f key==value -e TIMESLICE=2h -n 5
 ```
 This is usful for prevent high priority app don't release resource.
 
-## task add and action
+## ~~~task add and action~~~ multi scale instead
 Add command not do tasks immediately, send request to manager when excute action command!
 this is useful for rolling update. manager will scale up and down alternately
 ```
@@ -226,6 +226,15 @@ $ cattle add -f app==foov1 -n -5
 ```
 ```
 $ cattle action
+```
+
+## multi scale command line
+Using `;` to cut multiple scale command, or lets scale command support it
+```
+~~$ cattle multi -f app==foov2 -n 5;-f app==foov1 -n -5~~
+```
+```
+$ cattle scale -f app==foov2 -n 5;-f app==foov1 -n -5
 ```
 
 ## scale file
