@@ -1173,8 +1173,9 @@ func (c *Cluster) Scale(scaleConfig common.ScaleAPI) []string {
 
 	res, err := tasks.DoTasks()
 	if err != nil {
-		return res
+		log.Errorf("do tasks failed: %s", err)
+		return nil
 	}
 
-	return nil
+	return res
 }
