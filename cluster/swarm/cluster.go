@@ -1179,7 +1179,7 @@ func (c *Cluster) Scale(scaleConfig common.ScaleAPI) []string {
 	}
 
 	if len(res) == 0 {
-		return []string{"do nothing, if you want scale, may be some error occur, see logs for detail"}
+		return []string{"do nothing, if you want scale, may be some error occur, see logs for details"}
 	}
 
 	return res
