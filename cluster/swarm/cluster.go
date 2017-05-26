@@ -630,6 +630,8 @@ func (c *Cluster) Pull(name string, authConfig *types.AuthConfig, callback func(
 				}
 			}
 		}(e)
+		//BUG fix compose will tell all nodes to pull image, so we just pull it on one node
+		break
 	}
 	c.RUnlock()
 
