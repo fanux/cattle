@@ -2,7 +2,7 @@ pipeline:
     build:
        image: 10.1.86.51/devops/golang:1.7-godep
        commands:
-#         - echo "LABEL commit-sha=c-${DRONE_COMMIT_SHA} commit-message=c-${DRONE_COMMIT_MESSAGE} branch=c-${DRONE_COMMIT_BRANCH} build-number=c-${DRONE_BUILD_NUMBER}" >> Dockerfile
+         - echo "LABEL commit-sha=$$DRONE_COMMIT_SHA commit-message=$$DRONE_COMMIT_MESSAGE branch=$$DRONE_COMMIT_BRANCH build-number=$$DRONE_BUILD_NUMBER" >> Dockerfile
          - mkdir -p $GOPATH/src/github.com/docker/swarm/ && cp -r ./* $GOPATH/src/github.com/docker/swarm/ && pwd
          - cd $GOPATH/src/github.com/docker/swarm/ && godep go build -o cattle && cd - && cp $GOPATH/src/github.com/docker/swarm/cattle .
 
