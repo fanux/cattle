@@ -16,3 +16,12 @@ pipeline:
           tag: beta-v1.2.6.1
           file: Dockerfile
           insecure: true
+
+    upload:
+        image: dev.reg.iflytek.com/test/ci-sftp
+        repo: dev.reg.iflytek.com/devops/cattle:beta-v1.2.6.1
+        dockerengine: 10.1.86.206
+        sftpaddr: 172.16.12.214
+        sftpuser: chenqian
+        sftppasswd: iflyteksftp
+        sftpdir: images
