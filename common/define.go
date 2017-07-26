@@ -1,11 +1,35 @@
 package common
 
+// affinity and constaint
+const (
+	Affinity   = "affinity"
+	Constraint = "constraint"
+	Applots    = "applots"
+)
+
 // special labels define
 const (
 	LabelKeyNamespace = "namespace"
 	LabelKeyService   = "service"
 	LabelKeyApp       = "app"
 	LabelKeyName      = "name"
+)
+
+// TASK_TYPE
+const (
+	EnvTaskTypeKey = "TASK_TYPE"
+	EnvTaskStart   = "start"
+	EnvTaskStop    = "stop"
+	EnvTaskCreate  = "create"
+	EnvTaskDestroy = "destroy"
+)
+
+// filter key is
+const (
+	FilterKeyName       = "name"
+	FilterKeyImage      = "image"
+	FilterKeyConstraint = Constraint
+	FilterKeyTaskType   = EnvTaskTypeKey
 )
 
 // special Environment define
@@ -22,24 +46,8 @@ const (
 	TaskTypeStopContainer
 )
 
-// TASK_TYPE
-const (
-	EnvTaskTypeKey = "TASK_TYPE"
-	EnvTaskStart   = "start"
-	EnvTaskStop    = "stop"
-	EnvTaskCreate  = "create"
-	EnvTaskDestroy = "destroy"
-)
-
 // EnvStopTimeout Stop time out
 const EnvStopTimeout = "STOP_TIMEOUT"
-
-// affinity and constaint
-const (
-	Affinity   = "affinity"
-	Constraint = "constraint"
-	Applots    = "applots"
-)
 
 // default app lots
 const (

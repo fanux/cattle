@@ -182,7 +182,7 @@ func NewFilter(c *Cluster, item *common.ScaleItem) (filter ContainerFilter) {
 	base := new(ContainerFilterBase)
 	base.c = c
 	base.item = item
-	//TODO add constraint filter
+	//TODO add constraint filter, this is dangerous
 	base.containers = c.Containers()
 	if hasPrifix(item.Filters, common.LabelKeyService) {
 		base.filterType = common.LabelKeyService
