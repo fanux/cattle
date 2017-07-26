@@ -12,6 +12,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/docker/swarm/cluster/swarm/scale"
 	"github.com/docker/swarm/common"
 
 	"github.com/docker/docker/api/types"
@@ -1158,31 +1159,34 @@ func showContainers(cs cluster.Containers) {
 
 // Scale containers
 func (c *Cluster) Scale(scaleConfig common.ScaleAPI) []string {
-	log.Debugf("swarm cluster scale: %v", scaleConfig)
-	tasks := NewTasks(&LocalProcessor{c})
+	return scale.Scale(c, scaleConfig)
+	/*
+		log.Debugf("swarm cluster scale: %v", scaleConfig)
+		tasks := NewTasks(&LocalProcessor{c})
 
-	for _, item := range scaleConfig.Items {
-		log.Debugf("scale Item: %v", item)
+		for _, item := range scaleConfig.Items {
+			log.Debugf("scale Item: %v", item)
 
-		filter := NewFilter(c, &item)
-		if filter == nil {
-			continue
+			filter := NewFilter(c, &item)
+			if filter == nil {
+				continue
+			}
+			containers := filter.Filter()
+			showContainers(containers)
+			filter.AddTasks(tasks)
 		}
-		containers := filter.Filter()
-		showContainers(containers)
-		filter.AddTasks(tasks)
-	}
 
-	res, err := tasks.DoTasks()
-	if err != nil {
-		s := fmt.Sprintf("do tasks faied: %s", err)
-		log.Errorf(s)
-		return []string{s}
-	}
+		res, err := tasks.DoTasks()
+		if err != nil {
+			s := fmt.Sprintf("do tasks faied: %s", err)
+			log.Errorf(s)
+			return []string{s}
+		}
 
-	if len(res) == 0 {
-		return []string{"do nothing, if you want scale, may be some error occur, see logs for details"}
-	}
+		if len(res) == 0 {
+			return []string{"do nothing, if you want scale, may be some error occur, see logs for details"}
+		}
 
-	return res
+		return res
+	*/
 }

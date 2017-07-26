@@ -1,8 +1,7 @@
 package scale
 
 import (
-	"strings"
-
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm/cluster"
 	"github.com/docker/swarm/common"
 )
@@ -16,6 +15,7 @@ type Filterer interface {
 func NewFilterLink(item *common.ScaleItem) (filters []Filterer) {
 	filterObjs, err := parseFilterString(item.Filters)
 	if err != nil {
+		logrus.Errorf("parse filter string error: %s", item.Filters)
 		return
 	}
 	for _, f := range filterObjs {
@@ -28,13 +28,24 @@ func NewFilterLink(item *common.ScaleItem) (filters []Filterer) {
 			filters = append(filter, imageFilter)
 		default:
 			labelFilter := &LabelFilter{filter: f}
+			filters = append(filter, labelFilter)
 		}
 	}
 
-	for _, e := range item.ENVs {
-		if strings.HasPrefix(e, FilterKeyConstraint) {
+	cfilterObjs, err := parseFilterString(getConstaintStrings(item.ENVs))
+	if err == nil {
+		for _, cf := range cfilterObjs {
+			constraintFilter := &ConstraintFilter{filter: cf}
+			filters = append(filter, constraintFilter)
 		}
-		if strings.HasPrefix(e, FilterKeyTaskType) {
-		}
+	} else {
+		logrus.Warnf("get filter obj failed, envs: %s", item.ENVs)
+	}
+
+	if tasktype := getTaskType(item.Number, item.ENVs); tasktype != -1 {
+		taskTypeFilter := TaskTypeFilter{taskType: tasktype}
+		filters = append(filter, taskTypeFilter)
+	} else {
+		logrus.Warnf("get task type, get filter obj failed, envs: %s", item.ENVs)
 	}
 }

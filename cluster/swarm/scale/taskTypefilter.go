@@ -4,6 +4,7 @@ import "github.com/docker/swarm/cluster"
 
 //TaskTypeFilter is
 type TaskTypeFilter struct {
+	taskType int
 }
 
 //Filter is

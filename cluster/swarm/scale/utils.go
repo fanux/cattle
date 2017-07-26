@@ -1,69 +1,131 @@
 package scale
 
-import "github.com/docker/swarm/common"
+import (
+	"errors"
+	"regexp"
+	"strings"
 
-//filters is match container labels or engine labels
-func matchLabels(filters []common.Filter, labels map[string]string) bool {
+	"github.com/Sirupsen/logrus"
+	"github.com/docker/swarm/common"
+	"github.com/prometheus/common/log"
+)
+
+//filter is match container labels or engine labels
+func matchAnyLabels(labels map[string]string, filters ...common.Filter) bool {
 	match := true
 	for _, f := range filters {
-		label, ok := labels[f.Key]
-		if !ok {
-			if f.Operater == "==" {
-				return false
-			}
-		}
-		//matched, err := regexp.MatchString(f.Pattern, label)
-		matched := f.Pattern == label
-		/*
-			if err != nil {
-				logrus.Errorf("match label failed:%s", err)
-				return false
-			}
-		*/
-		if f.Operater == "==" {
-			if !matched {
-				match = false
-				break
-			}
-		} else if f.Operater == "!=" {
-			if matched {
-				match = false
-				break
-			}
+		if !filterMatchLabels(labels, f) {
+			match = false
+			break
 		}
 	}
 	return match
 }
 
-//filter is match container labels or engine labels
-func matchLabels(filters ...common.Filter, labels map[string]string) bool {
-	match := true
-	for _, f := range filters {
-		label, ok := labels[f.Key]
-		if !ok {
-			if f.Operater == "==" {
-				return false
-			}
-		}
-		//matched, err := regexp.MatchString(f.Pattern, label)
-		matched := f.Pattern == label
-		/*
+func filterMatchLabels(labels map[string]string, f common.Filter) bool {
+	var err error
+	match := false
+
+	label, ok := labels[f.Key]
+	logrus.Debugf("label is: %s, filter is: %s", label, f)
+	if f.Operater == "==" {
+		if ok {
+			match, err = regexp.MatchString(f.Pattern, label)
 			if err != nil {
 				logrus.Errorf("match label failed:%s", err)
 				return false
 			}
-		*/
-		if f.Operater == "==" {
-			if !matched {
-				match = false
-				break
+			return match
+		}
+		return false
+	} else if f.Operater == "!=" {
+		if ok {
+			match, err = regexp.MatchString(f.Pattern, label)
+			if err != nil {
+				logrus.Errorf("match label failed:%s", err)
+				return false
 			}
-		} else if f.Operater == "!=" {
-			if matched {
-				match = false
-				break
+			return !match
+		}
+		logrus.Debugf("operater is !=, can not get label return true")
+		return true
+	}
+	logrus.Errorf("Unknown Operater: %s", f.Operater)
+	return false
+}
+
+func getTaskType(n int, envs []string) int {
+	value, ok := getEnv(common.EnvTaskTypeKey, envs)
+	flag := false
+
+	if !ok || len(value) != 1 {
+		flag = true
+		log.Infoln("Using default task type")
+	}
+
+	if n > 0 {
+		if flag == true || value[0] == common.EnvTaskCreate {
+			return common.TaskTypeCreateContainer
+		}
+		return common.TaskTypeStartContainer
+	} else if n < 0 {
+		if flag == true || value[0] == common.EnvTaskDestroy {
+			return common.TaskTypeDestroyContainer
+		}
+		return common.TaskTypeStopContainer
+	}
+
+	log.Errorf("Error scale num: %d", n)
+	return -1
+}
+
+func getConstaintStrings(envs []string) []string {
+	var constraints []string
+	var ss []string
+	for _, e := range envs {
+		if strings.HasPrefix(e, common.Constraint) {
+			ss = strings.SplitN(e, ":", 2)
+			if len(ss) != 2 {
+				log.Infof("invalid constraint: %s", e)
+				continue
+			} else {
+				if strings.Contains(ss[1], "!=") || strings.Contains(ss[1], "==") {
+					constraints = append(constraints, ss[1])
+				} else {
+					log.Infof("invalid constaint: %s, not contains != or ==", e)
+				}
 			}
 		}
 	}
-	return match
+
+	return constraints
+}
+
+func parseFilterString(f []string) (filters []common.Filter, err error) {
+	//[key==value  key!=value]
+	var i int
+
+	filter := common.Filter{}
+
+	for _, s := range f {
+		for i = range s {
+			if s[i] == '=' && s[i-1] == '=' {
+				filter.Operater = "=="
+				break
+			}
+			if s[i] == '=' && s[i-1] == '!' {
+				filter.Operater = "!="
+				break
+			}
+		}
+		if i >= len(s)-1 {
+			return nil, errors.New("invalid filter")
+		}
+		filter.Key = s[:i-1]
+		filter.Pattern = s[i+1:]
+		filters = append(filters, filter)
+	}
+	log.Debugf("got filters: %s", filters)
+
+	return filters, err
 }
