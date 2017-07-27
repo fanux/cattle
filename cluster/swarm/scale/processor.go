@@ -16,7 +16,7 @@ import (
 
 // LocalProcessor is a synchronization task processor
 type LocalProcessor struct {
-	Cluster *Cluster
+	Cluster cluster.Cluster
 }
 
 // Do task

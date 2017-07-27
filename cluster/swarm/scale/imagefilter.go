@@ -8,5 +8,6 @@ type ImageFilter struct {
 }
 
 //Filter is
-func (f *ImageFilter) Filter(container cluster.Container) bool {
+func (f *ImageFilter) Filter(container *cluster.Container) bool {
+	return container.Config.Image == f.imageName
 }

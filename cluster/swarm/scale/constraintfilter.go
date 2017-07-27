@@ -1,6 +1,7 @@
 package scale
 
 import (
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm/cluster"
 	"github.com/docker/swarm/common"
 )
@@ -11,5 +12,12 @@ type ConstraintFilter struct {
 }
 
 //Filter is
-func (f *ContainerFilter) Filter(container cluster.Container) bool {
+func (f *ConstraintFilter) Filter(container *cluster.Container) bool {
+	return filterConstraintEngine(container.Engine, f.filter)
+}
+
+//if node has key=value label, constraint is key==value, return true
+func filterConstraintEngine(e *cluster.Engine, f common.Filter) bool {
+	logrus.Debugf("constraint filter: %s %s %s, engine labels: %s", f.Key, f.Operater, f.Pattern, e.Labels)
+	return filterMatchLabels(e.Labels, f)
 }

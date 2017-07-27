@@ -27,7 +27,7 @@ func NewContainerTraverser(item *common.ScaleItem) ContainersTraverser {
 		case common.TaskTypeStartContainer:
 		case common.TaskTypeCreateContainer:
 			return &CreateTaskTraverse{}
-		case common.TaskTypeStopContainer, TaskTypeDestroyContainer:
+		case common.TaskTypeStopContainer, common.TaskTypeDestroyContainer:
 			logrus.Errorf("scale up with stop or destroy container task type, your idiot?")
 			return nil
 		default:
@@ -63,7 +63,7 @@ func (t *CreateTaskTraverse) Traverse(containers cluster.Containers, filters []F
 	}
 	for _, c := range containers {
 		flag := true
-		for i, f := range filters {
+		for _, f := range filters {
 			if f.Filter(c) == false {
 				logrus.Debugf("container not match: %s", c.Names[0])
 				flag = false
@@ -76,6 +76,7 @@ func (t *CreateTaskTraverse) Traverse(containers cluster.Containers, filters []F
 			return
 		}
 	}
+	return
 }
 
 //AddTasks is
@@ -100,7 +101,7 @@ func (t *CommonTraverse) Traverse(containers cluster.Containers, filters []Filte
 	}
 	for _, c := range containers {
 		flag := true
-		for i, f := range filters {
+		for _, f := range filters {
 			if f.Filter(c) == false {
 				logrus.Debugf("container not match: %s", c.Names[0])
 				flag = false
@@ -115,6 +116,7 @@ func (t *CommonTraverse) Traverse(containers cluster.Containers, filters []Filte
 			}
 		}
 	}
+	return
 }
 
 //AddTasks is

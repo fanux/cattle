@@ -129,3 +129,19 @@ func parseFilterString(f []string) (filters []common.Filter, err error) {
 
 	return filters, err
 }
+
+// parse env like key=value or key:value , support multiple values key=value1, key=value2, return []string{value1,value2}
+func getEnv(key string, envs []string) (values []string, ok bool) {
+	ok = false
+	for _, e := range envs {
+		if strings.HasPrefix(e, key) {
+			for i, c := range e {
+				if c == '=' || c == ':' {
+					values = append(values, e[i+1:])
+					ok = true
+				}
+			}
+		}
+	}
+	return
+}

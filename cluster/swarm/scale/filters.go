@@ -8,7 +8,7 @@ import (
 
 //Filterer is
 type Filterer interface {
-	Filter(cluster.Container) bool
+	Filter(*cluster.Container) bool
 }
 
 //NewFilterLink is
@@ -22,13 +22,13 @@ func NewFilterLink(item *common.ScaleItem) (filters []Filterer) {
 		switch f.Key {
 		case common.FilterKeyName:
 			nameFilter := &NameFilter{containerName: f.Pattern}
-			filters = append(filter, nameFilter)
+			filters = append(filters, nameFilter)
 		case common.FilterKeyImage:
 			imageFilter := &ImageFilter{imageName: f.Pattern}
-			filters = append(filter, imageFilter)
+			filters = append(filters, imageFilter)
 		default:
 			labelFilter := &LabelFilter{filter: f}
-			filters = append(filter, labelFilter)
+			filters = append(filters, labelFilter)
 		}
 	}
 
@@ -36,16 +36,17 @@ func NewFilterLink(item *common.ScaleItem) (filters []Filterer) {
 	if err == nil {
 		for _, cf := range cfilterObjs {
 			constraintFilter := &ConstraintFilter{filter: cf}
-			filters = append(filter, constraintFilter)
+			filters = append(filters, constraintFilter)
 		}
 	} else {
 		logrus.Warnf("get filter obj failed, envs: %s", item.ENVs)
 	}
 
 	if tasktype := getTaskType(item.Number, item.ENVs); tasktype != -1 {
-		taskTypeFilter := TaskTypeFilter{taskType: tasktype}
-		filters = append(filter, taskTypeFilter)
+		taskTypeFilter := &TaskTypeFilter{taskType: tasktype}
+		filters = append(filters, taskTypeFilter)
 	} else {
 		logrus.Warnf("get task type, get filter obj failed, envs: %s", item.ENVs)
 	}
+	return
 }

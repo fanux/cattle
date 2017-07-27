@@ -11,7 +11,7 @@ type LabelFilter struct {
 }
 
 //Filter is
-func (f *LabelFilter) Filter(container cluster.Container) bool {
+func (f *LabelFilter) Filter(container *cluster.Container) bool {
 	labels := container.Config.Labels
-	return matchLabel(f.filters, labels)
+	return matchAnyLabels(labels, f.filter)
 }

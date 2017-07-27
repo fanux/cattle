@@ -19,6 +19,7 @@ type Controller struct {
 
 //Filter is
 func (c *Controller) Filter() (out cluster.Containers) {
+	return
 }
 
 //AddTasks is
@@ -39,7 +40,7 @@ func showContainers(cs cluster.Containers) {
 }
 
 //Scale is
-func Scale(c *cluster.Cluster, scaleConfig common.ScaleAPI) []string {
+func Scale(c cluster.Cluster, scaleConfig common.ScaleAPI) []string {
 	logrus.Debugf("swarm cluster scale: %v", scaleConfig)
 	tasks := NewTasks(&LocalProcessor{c})
 
