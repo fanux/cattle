@@ -12,15 +12,15 @@ pipeline:
           registry: 10.1.86.51
           email: fhtjob@hotmail.com
           repo: 10.1.86.51/devops/cattle
-          tag: beta-v1.2.6.1
+          tag: alpha-v1.2.6.1
           file: Dockerfile
           insecure: true
 
-    upload:
-        image: dev.reg.iflytek.com/test/ci-sftp
-        repo: dev.reg.iflytek.com/devops/cattle:beta-v1.2.6.1
-        dockerengine: 10.1.86.206
-        sftpaddr: 172.16.12.214
-        sftpuser: chenqian
-        sftppasswd: iflyteksftp
-        sftpdir: images
+#   upload:
+#       image: dev.reg.iflytek.com/test/ci-sftp
+#       repo: dev.reg.iflytek.com/devops/cattle:alpha-v1.2.6.1
+#       dockerengine: 10.1.86.206
+#       sftpaddr: 172.16.12.214
+#       sftpuser: chenqian
+#       sftppasswd: iflyteksftp
+#       sftpdir: images
