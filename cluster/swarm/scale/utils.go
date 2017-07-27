@@ -7,7 +7,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm/common"
-	"github.com/prometheus/common/log"
 )
 
 //filter is match container labels or engine labels
@@ -60,7 +59,7 @@ func getTaskType(n int, envs []string) int {
 
 	if !ok || len(value) != 1 {
 		flag = true
-		log.Infoln("Using default task type")
+		logrus.Infoln("Using default task type")
 	}
 
 	if n > 0 {
@@ -75,7 +74,7 @@ func getTaskType(n int, envs []string) int {
 		return common.TaskTypeStopContainer
 	}
 
-	log.Errorf("Error scale num: %d", n)
+	logrus.Errorf("Error scale num: %d", n)
 	return -1
 }
 
@@ -86,13 +85,13 @@ func getConstaintStrings(envs []string) []string {
 		if strings.HasPrefix(e, common.Constraint) {
 			ss = strings.SplitN(e, ":", 2)
 			if len(ss) != 2 {
-				log.Infof("invalid constraint: %s", e)
+				logrus.Infof("invalid constraint: %s", e)
 				continue
 			} else {
 				if strings.Contains(ss[1], "!=") || strings.Contains(ss[1], "==") {
 					constraints = append(constraints, ss[1])
 				} else {
-					log.Infof("invalid constaint: %s, not contains != or ==", e)
+					logrus.Infof("invalid constaint: %s, not contains != or ==", e)
 				}
 			}
 		}
@@ -125,7 +124,7 @@ func parseFilterString(f []string) (filters []common.Filter, err error) {
 		filter.Pattern = s[i+1:]
 		filters = append(filters, filter)
 	}
-	log.Debugf("got filters: %s", filters)
+	logrus.Debugf("got filters: %s", filters)
 
 	return filters, err
 }
