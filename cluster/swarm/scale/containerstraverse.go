@@ -26,7 +26,7 @@ func NewContainerTraverser(item *common.ScaleItem) ContainersTraverser {
 		switch taskType {
 		case common.TaskTypeStartContainer:
 		case common.TaskTypeCreateContainer:
-			return &CreateTaskTraverse{}
+			return &CreateTaskTraverse{scaleNum: scaleNum}
 		case common.TaskTypeStopContainer, common.TaskTypeDestroyContainer:
 			logrus.Errorf("scale up with stop or destroy container task type, your idiot?")
 			return nil

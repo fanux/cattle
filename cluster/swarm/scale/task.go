@@ -109,8 +109,8 @@ func (t *Tasks) DoTasks() ([]string, error) {
 		name, err := t.Processor.Do(t.Current.Value.(*Task))
 		if err != nil {
 			if t.Current.Value.(*Task).Retry == 0 {
-				logrus.Warnf("task faild, task type:%d, container name:%s",
-					t.Current.Value.(*Task).TaskType, t.Current.Value.(*Task).Container.Names)
+				logrus.Warnf("task faild, task type:%d, container name:%s, err: %s",
+					t.Current.Value.(*Task).TaskType, t.Current.Value.(*Task).Container.Names, err)
 				t.Current = t.Current.Prev()
 				t.Current.Unlink(1)
 				continue
