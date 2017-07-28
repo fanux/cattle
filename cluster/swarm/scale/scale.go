@@ -57,6 +57,12 @@ func Scale(c cluster.Cluster, scaleConfig common.ScaleAPI) []string {
 		}
 		containers := travers.Traverse(c.Containers(), filters)
 		showContainers(containers)
+
+		err := DoPreProcesses(&item, containers)
+		if err != nil {
+			logrus.Errorf("pre process container failed: %s", err)
+			continue
+		}
 		travers.AddTasks(tasks, containers)
 	}
 

@@ -58,6 +58,7 @@ func NewFilterLink(item *common.ScaleItem) (filters []Filterer) {
 	*/
 
 	if tasktype := getTaskType(item.Number, item.ENVs); tasktype != -1 {
+		item.TaskType = tasktype
 		taskTypeFilter := &TaskTypeFilter{taskType: tasktype}
 		filters = append(filters, taskTypeFilter)
 	} else {

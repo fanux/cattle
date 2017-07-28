@@ -58,10 +58,11 @@ const (
 
 // ScaleItem is
 type ScaleItem struct {
-	Filters []string
-	Number  int
-	ENVs    []string
-	Labels  map[string]string
+	Filters  []string
+	Number   int
+	ENVs     []string
+	Labels   map[string]string
+	TaskType int
 }
 
 // ScaleAPI is scale http api
