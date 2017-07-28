@@ -278,3 +278,9 @@ Same as the `docker stop -t 10`, Seconds to wait for stop before killing it (def
 $ docker run -e STOP_TIMEOUT=10 nginx:latest
 ```
 Warn: this env only useful for `cattle scale` command, if you use `docker stop` container will close immediately
+
+## difference of filter on constraint node and scale to constraint node
+```
+$ cattle scale -f "name==nginx" -f "constraint:node==GPU" -n 5    # filter container(name is nginx) on GPU node, and scale up it
+$ cattle scale -f "name==nginx" -e "constraint:node==GPU" -n 5    # filter container(name is nginx), and scale up it to GPU node
+```
