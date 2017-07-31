@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/swarm/common"
 )
 
 // SwarmLabelNamespace defines the key prefix in all custom labels
@@ -73,6 +75,7 @@ func BuildContainerConfig(c container.Config, h container.HostConfig, n network.
 		constraints        []string
 		whitelists         []string
 		reschedulePolicies []string
+		applots            string
 		env                []string
 	)
 
@@ -111,6 +114,8 @@ func BuildContainerConfig(c container.Config, h container.HostConfig, n network.
 			reschedulePolicies = append(reschedulePolicies, value)
 		} else if ok && key == "whitelist" {
 			whitelists = append(whitelists, value)
+		} else if ok && key == common.Applots {
+			applots = value
 		} else {
 			env = append(env, e)
 		}
@@ -144,6 +149,12 @@ func BuildContainerConfig(c container.Config, h container.HostConfig, n network.
 	if len(whitelists) > 0 {
 		if labels, err := json.Marshal(whitelists); err == nil {
 			c.Labels[SwarmLabelNamespace+".whitelists"] = string(labels)
+		}
+	}
+
+	if len(applots) > 0 {
+		if a, err := strconv.Atoi(applots); err == nil && a > 0 {
+			c.Labels[SwarmLabelNamespace+".applots"] = applots
 		}
 	}
 
