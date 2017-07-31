@@ -2,6 +2,7 @@ package scale
 
 import (
 	"encoding/json"
+	"strconv"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
@@ -18,6 +19,14 @@ type PreProcessor interface {
 
 //NewPreProcessors is
 func NewPreProcessors(item *common.ScaleItem) (processes []PreProcessor) {
+	if item.Number > 0 {
+		for _, env := range item.ENVs {
+			if strings.HasPrefix(env, common.Applots) {
+				applotsPreProcessor := &SetApplotsPreProcessor{applots: env}
+				processes = append(processes, applotsPreProcessor)
+			}
+		}
+	}
 	switch item.TaskType {
 	case common.TaskTypeStartContainer, common.TaskTypeStopContainer:
 		labelPreProcessor := &SetLabelsPreProcessor{labels: item.Labels}
@@ -122,6 +131,24 @@ func (p *SetLabelsPreProcessor) PreProcess(containers cluster.Containers) {
 	for _, c := range containers {
 		for k, v := range p.labels {
 			c.Config.Labels[k] = v
+		}
+	}
+}
+
+//SetApplotsPreProcessor is
+type SetApplotsPreProcessor struct {
+	applots string
+}
+
+//PreProcess is
+func (p *SetApplotsPreProcessor) PreProcess(containers cluster.Containers) {
+	flag, _, v := parseEnv(p.applots)
+	if applots, err := strconv.Atoi(v); err != nil || applots <= 0 {
+		return
+	}
+	if flag {
+		for _, c := range containers {
+			c.Config.Labels[cluster.SwarmLabelNamespace+".applots"] = v
 		}
 	}
 }

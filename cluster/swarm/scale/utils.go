@@ -144,3 +144,15 @@ func getEnv(key string, envs []string) (values []string, ok bool) {
 	}
 	return
 }
+
+func parseEnv(e string) (bool, string, string) {
+	parts := strings.SplitN(e, ":", 2)
+	if len(parts) == 2 {
+		return true, parts[0], parts[1]
+	}
+	parts = strings.SplitN(e, "=", 2)
+	if len(parts) == 2 {
+		return true, parts[0], parts[1]
+	}
+	return false, "", ""
+}
