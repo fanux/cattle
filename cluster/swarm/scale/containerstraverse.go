@@ -81,6 +81,9 @@ func (t *CreateTaskTraverse) Traverse(containers cluster.Containers, filters []F
 
 //AddTasks is
 func (t *CreateTaskTraverse) AddTasks(tasks *Tasks, containers cluster.Containers) {
+	if len(containers) == 0 {
+		return
+	}
 	logrus.Infof("Add task Got filter container: %s, Envs: %s", containers[0].Names, containers[0].Config.Env)
 	for i := 0; i < t.scaleNum; i++ {
 		tasks.AddTasks(containers, common.TaskTypeCreateContainer)
@@ -121,5 +124,8 @@ func (t *CommonTraverse) Traverse(containers cluster.Containers, filters []Filte
 
 //AddTasks is
 func (t *CommonTraverse) AddTasks(tasks *Tasks, containers cluster.Containers) {
+	if len(containers) == 0 {
+		return
+	}
 	tasks.AddTasks(containers, t.taskType)
 }

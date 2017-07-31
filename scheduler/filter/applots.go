@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarm/cluster"
 	"github.com/docker/swarm/common"
 	"github.com/docker/swarm/scheduler/node"
@@ -22,13 +23,19 @@ func (f *ApplotsFilter) Name() string {
 func (f *ApplotsFilter) Filter(config *cluster.ContainerConfig, nodes []*node.Node, soft bool) ([]*node.Node, error) {
 	var applots int
 	var app string
+	var err error
+	var ok bool
 
 	if applots = getApplotsFromLabels(config.Labels); applots == -1 {
-		return nodes, fmt.Errorf("invalid applots found: %d", applots)
+		err = fmt.Errorf("invalid applots found: %d", applots)
+		logrus.Debugf(err.Error())
+		return nodes, err
 	}
 
-	if app, ok := config.Labels[common.LabelKeyApp]; !ok {
-		return nodes, fmt.Errorf("Not point out the app name, invalid applots, using applots must has %s label, %s", common.LabelKeyApp, app)
+	if app, ok = config.Labels[common.LabelKeyApp]; !ok {
+		err = fmt.Errorf("Not point out the app name, invalid applots, using applots must has %s label, %s", common.LabelKeyApp, app)
+		logrus.Debugf(err.Error())
+		return nodes, err
 	}
 	var conuntAlreadyHas int
 
@@ -37,6 +44,7 @@ func (f *ApplotsFilter) Filter(config *cluster.ContainerConfig, nodes []*node.No
 		conuntAlreadyHas = 0
 		for _, container := range node.Containers {
 			if v, ok := container.Config.Labels[common.LabelKeyApp]; ok {
+				logrus.Debugf("app is: %s, applots label is: %s", app, v)
 				if app == v {
 					conuntAlreadyHas++
 				}
@@ -44,6 +52,8 @@ func (f *ApplotsFilter) Filter(config *cluster.ContainerConfig, nodes []*node.No
 		}
 		if conuntAlreadyHas < applots {
 			candidates = append(candidates, node)
+		} else {
+			logrus.Infof("node is full, has %d %s containers, applots is: %d", conuntAlreadyHas, app, applots)
 		}
 		if len(candidates) == 0 {
 			return nil, fmt.Errorf("unable to find a node that satisfies the applots: %d", applots)

@@ -1,0 +1,10 @@
+version: '2'
+services:
+    pause:
+        container_name: pause
+        network_mode: host
+        environment:
+            - applots:3
+        labels:
+              app: pause
+        image: dev.reg.iflytek.com/test/pause:asm

@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/swarm/common"
@@ -153,8 +154,12 @@ func BuildContainerConfig(c container.Config, h container.HostConfig, n network.
 	}
 
 	if len(applots) > 0 {
+		logrus.Debugf("set applots to labels: %s", applots)
 		if a, err := strconv.Atoi(applots); err == nil && a > 0 {
 			c.Labels[SwarmLabelNamespace+".applots"] = applots
+			logrus.Debugf("container labels: %s", c.Labels)
+		} else {
+			logrus.Errorf("parse applots error: %s", err)
 		}
 	}
 

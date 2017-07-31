@@ -187,6 +187,20 @@ $ docker run -l app=foo -e "applots=3" foo:latest
 ```
 One host run less then 3 containers which has `app=foo` label. (`app` is a special label)
 
+compose example:
+```
+version: '2'
+services:
+    pause:
+        container_name: pause
+        network_mode: host
+        environment:
+            - applots:3
+        labels:
+              app: pause
+        image: dev.reg.iflytek.com/test/pause:asm
+```
+
 ### create containers with replication
 ```
 $ docker run -e "replica=3" foo:latest
