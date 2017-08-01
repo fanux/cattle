@@ -19,12 +19,16 @@ type PreProcessor interface {
 
 //NewPreProcessors is
 func NewPreProcessors(item *common.ScaleItem) (processes []PreProcessor) {
-	if item.Number > 0 {
-		for _, env := range item.ENVs {
+	for _, env := range item.ENVs {
+		if item.Number > 0 {
 			if strings.HasPrefix(env, common.Applots) {
 				applotsPreProcessor := &SetApplotsPreProcessor{applots: env}
 				processes = append(processes, applotsPreProcessor)
 			}
+		}
+		if strings.HasPrefix(env, common.EnvStopTimeout) {
+			stopTimeoutProcessor := &StopTimeOutPreProcessor{stopTimeout: env}
+			processes = append(processes, stopTimeoutProcessor)
 		}
 	}
 	switch item.TaskType {
@@ -149,6 +153,25 @@ func (p *SetApplotsPreProcessor) PreProcess(containers cluster.Containers) {
 	if flag {
 		for _, c := range containers {
 			c.Config.Labels[cluster.SwarmLabelNamespace+".applots"] = v
+		}
+	}
+}
+
+//StopTimeOutPreProcessor is
+type StopTimeOutPreProcessor struct {
+	stopTimeout string
+}
+
+//PreProcess is
+func (p *StopTimeOutPreProcessor) PreProcess(containers cluster.Containers) {
+	flag, _, v := parseEnv(p.stopTimeout)
+	if t, err := strconv.Atoi(v); err != nil || t <= 0 {
+		return
+	}
+	if flag {
+		for _, c := range containers {
+			c.Config.Env = removePrifixEnv(c.Config.Env, common.EnvStopTimeout)
+			c.Config.Env = append(c.Config.Env, p.stopTimeout)
 		}
 	}
 }

@@ -156,3 +156,13 @@ func parseEnv(e string) (bool, string, string) {
 	}
 	return false, "", ""
 }
+
+func removePrifixEnv(env []string, prifix string) (out []string) {
+	for _, e := range env {
+		if strings.HasPrefix(e, prifix) {
+		} else {
+			out = append(out, e)
+		}
+	}
+	return
+}
