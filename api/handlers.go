@@ -1160,6 +1160,47 @@ func proxyContainer(c *context, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func getEnv(key string, envs []string) (values []string, ok bool) {
+	ok = false
+	for _, e := range envs {
+		if strings.HasPrefix(e, key) {
+			for i, c := range e {
+				if c == '=' || c == ':' {
+					values = append(values, e[i+1:])
+					ok = true
+				}
+			}
+		}
+	}
+	return
+}
+
+// get default STOP_TIMEOUT=60 env
+func stopContainer(c *context, w http.ResponseWriter, r *http.Request) {
+	log.Debugf("===========stop timeout========\n %s, %s, %s, %s", r.URL.RawPath, r.URL.RawQuery, r.Form, r.PostForm)
+	_, container, err := getContainerFromVars(c, mux.Vars(r))
+	if err != nil {
+		if container == nil {
+			httpError(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		httpError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	values, ok := getEnv(common.EnvStopTimeout, container.Config.Env)
+	if ok {
+		if strings.HasPrefix(r.URL.RawQuery, "t=") {
+			log.Debugf("already has time out query")
+		} else {
+			log.Debugf("got default stop time out from env: %s", values[0])
+			r.URL.RawQuery = "t=" + values[0]
+			r.URL.RawPath += ("?" + r.URL.RawQuery)
+		}
+	}
+
+	proxyContainerAndForceRefresh(c, w, r)
+}
+
 // Proxy a request to the right node and force refresh container
 func proxyContainerAndForceRefresh(c *context, w http.ResponseWriter, r *http.Request) {
 	name, container, err := getContainerFromVars(c, mux.Vars(r))

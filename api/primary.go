@@ -70,7 +70,7 @@ var routes = map[string]map[string]handler{
 		"/containers/{name:.*}/rename":     postRenameContainer,
 		"/containers/{name:.*}/restart":    proxyContainerAndForceRefresh,
 		"/containers/{name:.*}/start":      postContainersStart,
-		"/containers/{name:.*}/stop":       proxyContainerAndForceRefresh,
+		"/containers/{name:.*}/stop":       stopContainer,
 		"/containers/{name:.*}/update":     proxyContainerAndForceRefresh,
 		"/containers/{name:.*}/wait":       proxyContainerAndForceRefresh,
 		"/containers/{name:.*}/resize":     proxyContainer,
