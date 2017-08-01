@@ -8,29 +8,6 @@ import (
 	"github.com/docker/swarm/common"
 )
 
-//Controller is
-type Controller struct {
-	c        *cluster.Cluster
-	item     common.ScaleItem
-	taskType int
-	out      cluster.Containers
-	tasks    *Tasks
-}
-
-//Filter is
-func (c *Controller) Filter() (out cluster.Containers) {
-	return
-}
-
-//AddTasks is
-func (c *Controller) AddTasks() {
-}
-
-//DoTasks is
-func (c *Controller) DoTasks() {
-	c.tasks.DoTasks()
-}
-
 func showContainers(cs cluster.Containers) {
 	logrus.Infoln("\n\nFilter out containers:")
 	for _, c := range cs {
