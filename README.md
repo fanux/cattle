@@ -5,7 +5,6 @@
 2. Scale up is easy, but when some high priority service want to seize low priority resources, how to decide which service to scale down?
 3. Stop container after inform app.
 
-
 Cattle solve those problems. 
 
 ## Special labels: Namespace, service, app
