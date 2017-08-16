@@ -107,6 +107,12 @@ func parseFilterString(f []string) (filters []common.Filter, err error) {
 	filter := common.Filter{}
 
 	for _, s := range f {
+		if s < 3 {
+			continue
+		}
+		if s[0] == '=' || s[0] == '!' {
+			continue
+		}
 		for i = range s {
 			if s[i] == '=' && s[i-1] == '=' {
 				filter.Operater = "=="
