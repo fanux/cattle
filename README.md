@@ -56,7 +56,7 @@ Filter: cattle scale complete compatible to swarm filter, just set ENV and label
 
 If the scale number < 0, will scale down containers on the node witch has `storage=ssd` label.
 ```
-$ cattle scale -e constraint:storage==ssd -l app=scale-up-nginx -f service==online -n 5 
+$ cattle scale -e constraint:storage==ssd -l app=scale-up-nginx -f service==online -n -5 
 ```
 
 
